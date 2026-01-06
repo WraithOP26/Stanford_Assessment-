@@ -15,6 +15,7 @@ import isTemporary from './temporary';
 export * from './agents';
 export * from './mcp';
 export * from './favorites';
+export * from './files';
 
 export default {
   ...artifacts,
@@ -32,3 +33,4 @@ export default {
   ...misc,
   ...isTemporary,
 };
+

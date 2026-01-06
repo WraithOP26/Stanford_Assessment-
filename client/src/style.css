@@ -3207,16 +3207,218 @@ html.stanford-theme form[class*="mx-auto"] {
   margin-bottom: 0.5rem;
 }
 
-/* Dark mode adjustments for Stanford theme */
-.dark .stanford-welcome-title {
-  color: #E07171;
+/* ========================================
+   Stanford Theme - DARK MODE Overrides
+   ======================================== */
+
+/* Dark Mode - Main background */
+.dark html.stanford-theme,
+.dark.stanford-theme body,
+html.stanford-theme.dark body {
+  background-color: #1a1a1a !important;
 }
 
+/* Dark Mode - Header */
+.dark .stanford-header {
+  background-color: transparent !important;
+}
+
+/* Dark Mode - Default buttons are dark charcoal */
+.dark .stanford-header button {
+  background-color: #4a4a4a !important;
+  color: #fff !important;
+}
+
+.dark .stanford-header button:hover {
+  background-color: #5a5a5a !important;
+}
+
+.dark .stanford-header button svg {
+  color: #fff !important;
+}
+
+/* Dark Mode - Model selector is Stanford red */
+.dark .stanford-header button[class*="group"],
+.dark .stanford-header button[aria-label="Select a model"],
+.dark .stanford-header div[class*="flex"] > button:has(span) {
+  background-color: #8C1515 !important;
+  color: #fff !important;
+}
+
+.dark .stanford-header button[class*="group"]:hover,
+.dark .stanford-header button[aria-label="Select a model"]:hover {
+  background-color: #a01818 !important;
+}
+
+.dark .stanford-header button[class*="group"] span,
+.dark .stanford-header button[aria-label="Select a model"] span {
+  color: #fff !important;
+}
+
+.dark .stanford-header button[class*="group"] svg,
+.dark .stanford-header button[aria-label="Select a model"] svg {
+  color: #fff !important;
+}
+
+/* Dark Mode - Replace model name with "Financial Info Navigator" */
+.dark .stanford-header button[aria-label="Select a model"] span {
+  font-size: 0 !important;
+  visibility: hidden;
+}
+
+.dark .stanford-header button[aria-label="Select a model"] span::after {
+  content: 'Financial Info Navigator';
+  font-size: 14px !important;
+  visibility: visible;
+  color: #fff !important;
+}
+
+/* Also target buttons that might have the model name in a different structure */
+.dark .stanford-header button[class*="group"] > span:not(:has(svg)) {
+  font-size: 0 !important;
+}
+
+.dark .stanford-header button[class*="group"] > span:not(:has(svg))::after {
+  content: 'Financial Info Navigator';
+  font-size: 14px !important;
+  color: #fff !important;
+}
+
+/* Dark Mode - Sidebar toggle button is TEAL */
+.dark .stanford-header button[aria-label="Open sidebar"],
+.dark .stanford-header button[aria-label="Close sidebar"],
+.dark html.stanford-theme button[aria-label="Open sidebar"],
+.dark html.stanford-theme button[aria-label="Close sidebar"] {
+  background-color: #4a7c7c !important;
+  color: #fff !important;
+}
+
+.dark .stanford-header button[aria-label="Open sidebar"]:hover,
+.dark .stanford-header button[aria-label="Close sidebar"]:hover,
+.dark html.stanford-theme button[aria-label="Open sidebar"]:hover,
+.dark html.stanford-theme button[aria-label="Close sidebar"]:hover {
+  background-color: #5a8c8c !important;
+}
+
+/* Dark Mode - Sidebar Panel */
 .dark .stanford-sidebar,
 .dark .sidenav.stanford-theme {
-  background-color: var(--stanford-teal-dark) !important;
+  background-color: #2d2d2d !important;
+  border-left-color: #3d3d3d !important;
 }
 
-.dark .stanford-header {
-  background-color: #1a1a1a !important;
+.dark .sidenav.stanford-theme .bg-token-sidebar-surface-primary,
+.dark .sidenav.stanford-theme > div {
+  background-color: #2d2d2d !important;
+}
+
+.dark .stanford-sidebar .text-text-secondary,
+.dark .stanford-sidebar .text-text-primary,
+.dark .sidenav.stanford-theme .text-text-secondary,
+.dark .sidenav.stanford-theme .text-text-primary,
+.dark .sidenav.stanford-theme span,
+.dark .sidenav.stanford-theme label {
+  color: #e0e0e0 !important;
+}
+
+/* Dark Mode - Sidebar buttons */
+.dark .stanford-sidebar button,
+.dark .sidenav.stanford-theme button {
+  color: #fff !important;
+  background-color: #4a4a4a !important;
+}
+
+.dark .stanford-sidebar button span,
+.dark .sidenav.stanford-theme button span {
+  color: #fff !important;
+}
+
+.dark .stanford-sidebar button:hover,
+.dark .sidenav.stanford-theme button:hover {
+  background-color: #5a5a5a !important;
+}
+
+.dark .stanford-sidebar [data-state="open"],
+.dark .sidenav.stanford-theme [data-state="open"] {
+  background-color: #5a5a5a !important;
+}
+
+/* Dark Mode - Welcome title */
+.dark .stanford-welcome-title {
+  color: #E07171 !important;
+}
+
+/* Dark Mode - Welcome description text */
+.dark .stanford-welcome-description {
+  color: #e0e0e0 !important;
+}
+
+.dark .stanford-welcome-description a {
+  color: #E07171 !important;
+}
+
+.dark .stanford-welcome-description a:hover {
+  color: #F28E8E !important;
+}
+
+/* Dark Mode - Welcome note text */
+.dark .stanford-welcome-note {
+  color: #e0e0e0 !important;
+}
+
+.dark .stanford-welcome-note strong {
+  color: #fff !important;
+}
+
+/* Dark Mode - Footer links */
+.dark .stanford-footer a {
+  color: #E07171 !important;
+}
+
+.dark .stanford-footer a:hover {
+  color: #F28E8E !important;
+}
+
+/* Dark Mode - Chat form background */
+.dark html.stanford-theme main > div > div:last-child {
+  background-color: var(--surface-primary) !important;
+}
+
+.dark html.stanford-theme form[class*="mx-auto"] {
+  background-color: var(--surface-primary) !important;
+}
+
+/* Dark Mode - Landing wrapper */
+.dark .stanford-landing-wrapper {
+  background-color: transparent !important;
+}
+
+/* Dark Mode - Logo with dark background */
+.dark .dark-mode-logo {
+  background-color: transparent !important;
+}
+
+.dark .dark-mode-logo img {
+  /* No filter - keep original logo colors */
+}
+
+/* Dark Mode - Main content area */
+.dark html.stanford-theme .bg-surface-primary,
+.dark html.stanford-theme [class*="bg-surface"] {
+  background-color: var(--surface-primary) !important;
+}
+
+/* Dark Mode - Ensure sidebar navigation text is white */
+.dark html.stanford-theme nav[aria-label="Controls"] button {
+  color: #fff !important;
+}
+
+.dark html.stanford-theme nav[aria-label="Controls"] button span,
+.dark html.stanford-theme nav[aria-label="Controls"] button div {
+  color: #fff !important;
+}
+
+/* Dark Mode - Accordion content */
+.dark .sidenav.stanford-theme .bg-token-sidebar-surface-primary {
+  background-color: #2d2d2d !important;
 }

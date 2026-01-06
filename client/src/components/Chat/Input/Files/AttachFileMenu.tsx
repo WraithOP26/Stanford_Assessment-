@@ -36,6 +36,7 @@ import { useGetStartupConfig } from '~/data-provider';
 import { ephemeralAgentByConvoId } from '~/store';
 import { MenuItemProps } from '~/common';
 import { cn } from '~/utils';
+import DirectAttachToggle from './DirectAttachToggle';
 
 type FileUploadType = 'image' | 'document' | 'image_document' | 'image_document_video_audio';
 
@@ -109,8 +110,21 @@ const AttachFileMenu = ({
   };
 
   const dropdownItems = useMemo(() => {
+    // Add Direct Attach toggle as first item
+    const items: MenuItemProps[] = [
+      {
+        hideOnClick: false, // Don't close menu when toggling
+        render: (props) => (
+          <DirectAttachToggle conversationId={conversationId} {...props} />
+        ),
+      },
+      {
+        separate: true, // Add separator after toggle
+      },
+    ];
+
     const createMenuItems = (onAction: (fileType?: FileUploadType) => void) => {
-      const items: MenuItemProps[] = [];
+      const menuItems: MenuItemProps[] = [];
 
       let currentProvider = provider || endpoint;
 
@@ -127,7 +141,7 @@ const AttachFileMenu = ({
         isDocumentSupportedProvider(currentProvider) ||
         isAzureWithResponsesApi
       ) {
-        items.push({
+        menuItems.push({
           label: localize('com_ui_upload_provider'),
           onClick: () => {
             setToolResource(undefined);
@@ -137,32 +151,32 @@ const AttachFileMenu = ({
             }
             onAction(fileType);
           },
-          icon: <FileImageIcon className="icon-md" />,
+          icon: <FileImageIcon className="icon-md text-text-secondary" />,
         });
       } else {
-        items.push({
+        menuItems.push({
           label: localize('com_ui_upload_image_input'),
           onClick: () => {
             setToolResource(undefined);
             onAction('image');
           },
-          icon: <ImageUpIcon className="icon-md" />,
+          icon: <ImageUpIcon className="icon-md text-text-secondary" />,
         });
       }
 
       if (capabilities.contextEnabled) {
-        items.push({
+        menuItems.push({
           label: localize('com_ui_upload_ocr_text'),
           onClick: () => {
             setToolResource(EToolResources.context);
             onAction();
           },
-          icon: <FileType2Icon className="icon-md" />,
+          icon: <FileType2Icon className="icon-md text-text-secondary" />,
         });
       }
 
       if (capabilities.fileSearchEnabled && fileSearchAllowedByAgent) {
-        items.push({
+        menuItems.push({
           label: localize('com_ui_upload_file_search'),
           onClick: () => {
             setToolResource(EToolResources.file_search);
@@ -172,12 +186,12 @@ const AttachFileMenu = ({
             }));
             onAction();
           },
-          icon: <FileSearch className="icon-md" />,
+          icon: <FileSearch className="icon-md text-text-secondary" />,
         });
       }
 
       if (capabilities.codeEnabled && codeAllowedByAgent) {
-        items.push({
+        menuItems.push({
           label: localize('com_ui_upload_code_files'),
           onClick: () => {
             setToolResource(EToolResources.execute_code);
@@ -187,11 +201,11 @@ const AttachFileMenu = ({
             }));
             onAction();
           },
-          icon: <TerminalSquareIcon className="icon-md" />,
+          icon: <TerminalSquareIcon className="icon-md text-text-secondary" />,
         });
       }
 
-      return items;
+      return menuItems;
     };
 
     const localItems = createMenuItems(handleUploadClick);
@@ -204,14 +218,15 @@ const AttachFileMenu = ({
       localItems.push({
         label: localize('com_files_upload_sharepoint'),
         onClick: () => {},
-        icon: <SharePointIcon className="icon-md" />,
+        icon: <SharePointIcon className="icon-md text-text-secondary" />,
         subItems: sharePointItems,
       });
-      return localItems;
+      return items.concat(localItems);
     }
 
-    return localItems;
+    return items.concat(localItems);
   }, [
+    conversationId,
     localize,
     endpoint,
     provider,

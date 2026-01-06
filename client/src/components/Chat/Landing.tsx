@@ -149,8 +149,72 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
 
   // Check if Stanford theme is enabled via custom welcome message
   const isStanfordTheme = startupConfig?.interface?.customWelcome?.includes('Stanford') ?? false;
+  
+  // Check for dark mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    
+    // Watch for changes to the dark class
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    
+    return () => observer.disconnect();
+  }, []);
 
   if (isStanfordTheme) {
+    // Dark mode - Financial Info Navigator content
+    if (isDarkMode) {
+      return (
+        <div
+          className="stanford-landing-wrapper flex transform-gpu flex-col items-center overflow-y-auto transition-all duration-200"
+          style={{ maxHeight: 'calc(100vh - 280px)', paddingBottom: '20px' }}
+        >
+          <div className="stanford-welcome-container">
+            <div className="stanford-welcome-header">
+              <div className="stanford-logo-wrapper">
+                <img 
+                  src="/assets/stanford-logo-dark.png" 
+                  alt="Stanford Logo" 
+                  className="stanford-landing-logo"
+                  style={{ width: '240px', height: 'auto' }}
+                />
+              </div>
+              <h1 className="text-xl font-semibold mt-3" style={{ color: '#fff' }}>Stanford AI Playground</h1>
+              <h2 className="text-lg font-medium mt-1" style={{ color: '#fff' }}>Financial Info Navigator</h2>
+            </div>
+            
+            <div className="stanford-welcome-description mt-6" style={{ color: '#e0e0e0', textAlign: 'left' }}>
+              <p className="mb-4" style={{ lineHeight: '1.7' }}>
+                Welcome to the <strong>Financial Info Navigator (FIN) PILOT</strong>, a resource for Stanford staff that answers questions about purchasing, contracts, supplier, travel reimbursement, payroll and more. FIN combines Fingate and the Administrative Guide (both updated weekly) with real-time Oracle Financials data to deliver consolidated guidance and transaction information in one place.
+              </p>
+              
+              <div className="stanford-welcome-note mt-6">
+                <p className="font-semibold mb-3" style={{ color: '#fff' }}>What can you ask FIN?</p>
+                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem' }}>
+                  <li className="mb-2">
+                    <strong>Policy & procedure questions:</strong> &quot;What are meal reimbursement limits?&quot;
+                  </li>
+                  <li className="mb-2">
+                    <strong>How-to questions:</strong> &quot;How do I add a vendor or request a purchase order?&quot;
+                  </li>
+                  <li className="mb-2">
+                    <strong>Transaction checks:</strong> &quot;What&apos;s the status of PO 12345678?&quot; or &quot;What&apos;s the setup status of supplier Roche Diagnostics?&quot;
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Light mode - Stanford AI Playground content
     return (
       <div
         className="stanford-landing-wrapper flex transform-gpu flex-col items-center overflow-y-auto transition-all duration-200"

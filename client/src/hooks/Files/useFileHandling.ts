@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { v4 } from 'uuid';
-import { useSetRecoilState } from 'recoil';
+import { useSetRecoilState, useRecoilValue } from 'recoil';
 import { useToastContext } from '@librechat/client';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -20,7 +20,7 @@ import useLocalize, { TranslationKeys } from '~/hooks/useLocalize';
 import { useDelayedUploadToast } from './useDelayedUploadToast';
 import { processFileForUpload } from '~/utils/heicConverter';
 import { useChatContext } from '~/Providers/ChatContext';
-import { ephemeralAgentByConvoId } from '~/store';
+import { ephemeralAgentByConvoId, directAttachByConvoId } from '~/store';
 import { logger, validateFiles } from '~/utils';
 import useClientResize from './useClientResize';
 import useUpdateFiles from './useUpdateFiles';
@@ -39,9 +39,11 @@ const useFileHandling = (params?: UseFileHandling) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const { startUploadTimer, clearUploadTimer } = useDelayedUploadToast();
   const { files, setFiles, setFilesLoading, conversation } = useChatContext();
+  const conversationId = conversation?.conversationId ?? Constants.NEW_CONVO;
   const setEphemeralAgent = useSetRecoilState(
-    ephemeralAgentByConvoId(conversation?.conversationId ?? Constants.NEW_CONVO),
+    ephemeralAgentByConvoId(conversationId),
   );
+  const directAttachEnabled = useRecoilValue(directAttachByConvoId(conversationId));
   const setError = (error: string) => setErrors((prevErrors) => [...prevErrors, error]);
   const { addFile, replaceFile, updateFileById, deleteFileById } = useUpdateFiles(
     params?.fileSetter ?? setFiles,
@@ -184,12 +186,19 @@ const useFileHandling = (params?: UseFileHandling) => {
     }
 
     if (!isAssistantsEndpoint(endpointType ?? endpoint)) {
-      if (!agent_id) {
+      // Direct Attach mode: bypass RAG/indexing
+      if (directAttachEnabled) {
         formData.append('message_file', 'true');
-      }
-      const tool_resource = extendedFile.tool_resource;
-      if (tool_resource != null) {
-        formData.append('tool_resource', tool_resource);
+        // Don't append tool_resource - this bypasses RAG flow
+      } else {
+        // Normal mode: use existing logic
+        if (!agent_id) {
+          formData.append('message_file', 'true');
+        }
+        const tool_resource = extendedFile.tool_resource;
+        if (tool_resource != null) {
+          formData.append('tool_resource', tool_resource);
+        }
       }
       if (conversation?.agent_id != null && formData.get('agent_id') == null) {
         formData.append('agent_id', conversation.agent_id);
