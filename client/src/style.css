@@ -52,6 +52,17 @@
   --amber-900: #78350f;
   --amber-950: #451a03;
   --brand-purple: #ab68ff;
+  
+  /* Stanford Theme Colors */
+  --stanford-cardinal: #8C1515;
+  --stanford-cardinal-dark: #6B1111;
+  --stanford-cardinal-light: #A51C1C;
+  --stanford-teal: #2D4A4A;
+  --stanford-teal-light: #3A5E5E;
+  --stanford-teal-dark: #1F3636;
+  --stanford-charcoal: #333333;
+  --stanford-warm-gray: #4D4F53;
+  --stanford-light-gray: #F4F4F4;
   --gizmo-gray-500: #999;
   --gizmo-gray-600: #666;
   --gizmo-gray-950: #0f0f0f;
@@ -2917,4 +2928,295 @@ html {
 
 .sharepoint-picker-bg {
   background-color: #f5f5f5;
+}
+
+/* ========================================
+   Stanford AI Playground Theme
+   ======================================== */
+
+/* Stanford Header Styling */
+.stanford-header {
+  background-color: transparent !important;
+}
+
+.stanford-header .text-text-primary {
+  color: var(--text-primary) !important;
+}
+
+/* Stanford Theme - Top header icon buttons with dark background */
+.stanford-header button {
+  background-color: #4a4a4a !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  border: none !important;
+}
+
+.stanford-header button:hover {
+  background-color: #5a5a5a !important;
+}
+
+.stanford-header button svg {
+  color: #fff !important;
+}
+
+/* Model selector button in header - Stanford RED color */
+.stanford-header button[class*="group"],
+.stanford-header button[aria-label="Select a model"],
+.stanford-header div[class*="flex"] > button:has(span) {
+  background-color: #8C1515 !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  padding: 6px 14px !important;
+}
+
+.stanford-header button[class*="group"]:hover,
+.stanford-header button[aria-label="Select a model"]:hover {
+  background-color: #a01818 !important;
+}
+
+.stanford-header button[class*="group"] span,
+.stanford-header button[aria-label="Select a model"] span {
+  color: #fff !important;
+}
+
+/* Close sidebar / Open sidebar button - Light blue background */
+.stanford-header button[aria-label="Open sidebar"],
+.stanford-header button[aria-label="Close sidebar"],
+html.stanford-theme button[aria-label="Open sidebar"],
+html.stanford-theme button[aria-label="Close sidebar"] {
+  background-color: #5ba3c0 !important;
+  color: #fff !important;
+}
+
+.stanford-header button[aria-label="Open sidebar"]:hover,
+.stanford-header button[aria-label="Close sidebar"]:hover,
+html.stanford-theme button[aria-label="Open sidebar"]:hover,
+html.stanford-theme button[aria-label="Close sidebar"]:hover {
+  background-color: #4a92af !important;
+}
+
+.stanford-header span {
+  color: inherit;
+}
+
+/* Stanford Sidebar Panel - White background with gray header buttons */
+.stanford-sidebar,
+.sidenav.stanford-theme {
+  background-color: #fff !important;
+  border-left-color: #e0e0e0 !important;
+}
+
+.sidenav.stanford-theme .bg-token-sidebar-surface-primary,
+.sidenav.stanford-theme > div {
+  background-color: #fff !important;
+}
+
+.stanford-sidebar .text-text-secondary,
+.stanford-sidebar .text-text-primary,
+.sidenav.stanford-theme .text-text-secondary,
+.sidenav.stanford-theme .text-text-primary,
+.sidenav.stanford-theme span,
+.sidenav.stanford-theme label {
+  color: #333 !important;
+}
+
+/* Gray button bar at top of sidebar */
+.stanford-sidebar button,
+.sidenav.stanford-theme button {
+  color: #fff !important;
+  background-color: #666 !important;
+  border-radius: 4px !important;
+  margin-bottom: 2px !important;
+}
+
+.stanford-sidebar button span,
+.sidenav.stanford-theme button span {
+  color: #fff !important;
+}
+
+.stanford-sidebar button:hover,
+.sidenav.stanford-theme button:hover {
+  background-color: #555 !important;
+}
+
+.stanford-sidebar [data-state="open"],
+.sidenav.stanford-theme [data-state="open"] {
+  background-color: #555 !important;
+}
+
+.sidenav.stanford-theme svg {
+  color: #fff !important;
+}
+
+/* Ensure all text in sidebar buttons is white */
+html.stanford-theme nav[aria-label="Controls"] button {
+  color: #fff !important;
+}
+
+html.stanford-theme nav[aria-label="Controls"] button span,
+html.stanford-theme nav[aria-label="Controls"] button div {
+  color: #fff !important;
+}
+
+/* Override accordion content background in Stanford sidebar */
+.sidenav.stanford-theme .bg-token-sidebar-surface-primary {
+  background-color: #fff !important;
+}
+
+/* Stanford Cardinal Accent Color */
+.stanford-accent {
+  color: var(--stanford-cardinal) !important;
+}
+
+.stanford-accent-bg {
+  background-color: var(--stanford-cardinal) !important;
+}
+
+/* Stanford Landing Page */
+.stanford-landing-title {
+  color: var(--stanford-cardinal);
+  font-weight: 600;
+  font-size: 1.75rem;
+}
+
+.stanford-landing-logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 1rem;
+}
+
+/* Stanford Button Styles */
+.btn-stanford {
+  background-color: var(--stanford-cardinal) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.btn-stanford:hover {
+  background-color: var(--stanford-cardinal-dark) !important;
+}
+
+/* Stanford Footer Links */
+.stanford-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  font-size: 0.75rem;
+}
+
+.stanford-footer a {
+  color: var(--stanford-cardinal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.stanford-footer a:hover {
+  color: var(--stanford-cardinal-dark);
+}
+
+.dark .stanford-footer a {
+  color: #E07171;
+}
+
+.dark .stanford-footer a:hover {
+  color: #F28E8E;
+}
+
+/* Stanford Welcome Section */
+.stanford-landing-wrapper {
+  width: 100%;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-bottom: 1rem;
+}
+
+/* Give the chat form a solid background in Stanford theme */
+html.stanford-theme main > div > div:last-child {
+  background-color: var(--surface-primary);
+}
+
+html.stanford-theme form[class*="mx-auto"] {
+  background-color: var(--surface-primary);
+}
+
+.stanford-welcome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem 2rem 2rem;
+}
+
+.stanford-welcome-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.stanford-logo-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.stanford-logo-wrapper svg {
+  display: block;
+}
+
+.stanford-welcome-title {
+  color: var(--stanford-cardinal);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.stanford-welcome-description {
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.stanford-welcome-description a {
+  color: var(--stanford-cardinal);
+  text-decoration: underline;
+}
+
+.stanford-welcome-note {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.stanford-welcome-note ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.stanford-welcome-note li {
+  margin-bottom: 0.5rem;
+}
+
+/* Dark mode adjustments for Stanford theme */
+.dark .stanford-welcome-title {
+  color: #E07171;
+}
+
+.dark .stanford-sidebar,
+.dark .sidenav.stanford-theme {
+  background-color: var(--stanford-teal-dark) !important;
+}
+
+.dark .stanford-header {
+  background-color: #1a1a1a !important;
 }

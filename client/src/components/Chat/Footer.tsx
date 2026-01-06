@@ -1,9 +1,24 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import TagManager from 'react-gtm-module';
 import { Constants } from 'librechat-data-provider';
 import { useGetStartupConfig } from '~/data-provider';
 import { useLocalize } from '~/hooks';
+
+// Stanford Footer Links Component
+const StanfordFooter = () => (
+  <div className="stanford-footer">
+    <a href="#">How To Guide</a>
+    <span className="text-text-tertiary">|</span>
+    <a href="#">Responsible AI</a>
+    <span className="text-text-tertiary">|</span>
+    <a href="#">Feedback</a>
+    <span className="text-text-tertiary">|</span>
+    <a href="#">Get Support</a>
+    <span className="text-text-tertiary">|</span>
+    <a href="#">Accessibility</a>
+  </div>
+);
 
 export default function Footer({ className }: { className?: string }) {
   const { data: config } = useGetStartupConfig();
@@ -88,6 +103,29 @@ export default function Footer({ className }: { className?: string }) {
   const footerElements = [...mainContentRender, privacyPolicyRender, termsOfServiceRender].filter(
     Boolean,
   );
+
+  // Check if Stanford theme is enabled
+  const isStanfordTheme = useMemo(
+    () => config?.interface?.customWelcome?.includes('Stanford') ?? false,
+    [config?.interface?.customWelcome],
+  );
+
+  // Return Stanford footer if theme is enabled
+  if (isStanfordTheme) {
+    return (
+      <div className="relative w-full">
+        <div
+          className={
+            className ??
+            'absolute bottom-0 left-0 right-0 hidden items-center justify-center px-2 py-2 text-center text-xs sm:flex md:px-[60px]'
+          }
+          role="contentinfo"
+        >
+          <StanfordFooter />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full">

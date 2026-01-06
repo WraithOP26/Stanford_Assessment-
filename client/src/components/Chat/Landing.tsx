@@ -8,6 +8,16 @@ import ConvoIcon from '~/components/Endpoints/ConvoIcon';
 import { useLocalize, useAuthContext } from '~/hooks';
 import { getIconEndpoint, getEntity } from '~/utils';
 
+// Stanford "S" Tree Logo Component - uses official Stanford branding image
+const StanfordLogo = () => (
+  <img 
+    src="/assets/stanford-logo.png" 
+    alt="Stanford Logo" 
+    className="stanford-landing-logo"
+    style={{ width: '100px', height: 'auto' }}
+  />
+);
+
 const containerClassName =
   'shadow-stroke relative flex h-full items-center justify-center rounded-full bg-white dark:bg-presentation dark:text-white text-black dark:after:shadow-none ';
 
@@ -136,6 +146,67 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     typeof startupConfig?.interface?.customWelcome === 'string'
       ? getGreeting()
       : getGreeting() + (user?.name ? ', ' + user.name : '');
+
+  // Check if Stanford theme is enabled via custom welcome message
+  const isStanfordTheme = startupConfig?.interface?.customWelcome?.includes('Stanford') ?? false;
+
+  if (isStanfordTheme) {
+    return (
+      <div
+        className="stanford-landing-wrapper flex transform-gpu flex-col items-center overflow-y-auto transition-all duration-200"
+        style={{ maxHeight: 'calc(100vh - 280px)', paddingBottom: '20px' }}
+      >
+        <div className="stanford-welcome-container">
+          <div className="stanford-welcome-header">
+            <div className="stanford-logo-wrapper">
+              <img 
+                src="/assets/stanford-logo.png" 
+                alt="Stanford Logo" 
+                className="stanford-landing-logo"
+                style={{ width: '240px', height: 'auto' }}
+              />
+            </div>
+            <h1 className="stanford-welcome-title">Stanford AI Playground</h1>
+          </div>
+          
+          <div className="stanford-welcome-description">
+            <p className="mb-4">
+              Welcome to the Stanford AI Playground, a platform for safely interacting with large language models (LLMs). 
+              For help getting started, visit the{' '}
+              <a href="#" className="stanford-accent">Quick Start Guide</a>.
+            </p>
+            <p className="mb-4">
+              The Stanford AI Playground is a service for the Stanford community that provides a safe environment 
+              supporting a wide range of AI providers, including OpenAI, Anthropic, Meta, and Google. 
+              Stanford Medicine users are still encouraged to use{' '}
+              <a href="#" className="stanford-accent">Stanford Medicine&apos;s Secure GPT tool</a>.
+            </p>
+            <div className="stanford-welcome-note">
+              <p>Please note the following important information before using the Playground:</p>
+              <ul>
+                <li>
+                  <strong>Data privacy and security:</strong> The data you provide is for your use only and remains 
+                  private during your interaction with the service. Any text or files you upload will not be saved 
+                  by the vendor, or used to alter or train the LLM in any way. The AI Playground is not approved 
+                  for high-risk data, including Protected Health Information (PHI) or Personally Identifiable Information (PII).
+                </li>
+                <li>
+                  <strong>Take caution before using results verbatim.</strong> While LLMs are advanced tools, 
+                  they are not flawless and may create errors or hallucinations.
+                </li>
+                <li>
+                  <strong>DeepSeek:</strong> A secure, local version of DeepSeek is now available for use on the 
+                  AI Playground. Please refrain from using models (e.g., DeepSeek-R1) hosted by the non-US company 
+                  DeepSeek, for any Stanford business outside of the Stanford AI Playground. Remember, high-risk 
+                  data in attachments or prompts is not approved for use with any Playground model.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
