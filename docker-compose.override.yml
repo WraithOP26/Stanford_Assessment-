@@ -1,0 +1,16 @@
+# Stanford AI Playground Docker Compose Override
+# This file enables the Stanford theme configuration
+
+services:
+  api:
+    # Mount the librechat.yaml configuration file and custom client build
+    volumes:
+      - type: bind
+        source: ./librechat.yaml
+        target: /app/librechat.yaml
+      - type: bind
+        source: ./client/dist
+        target: /app/client/dist
+    # Use the latest numbered release image
+    image: ghcr.io/danny-avila/librechat:latest
+

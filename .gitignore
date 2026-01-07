@@ -99,8 +99,8 @@ junit.xml
 **/venv/
 
 # docker override file
-docker-compose.override.yaml
-docker-compose.override.yml
+#docker-compose.override.yaml  # Commented out - needed for Stanford theme
+#docker-compose.override.yml   # Commented out - needed for Stanford theme
 
 # meilisearch
 meilisearch
