@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { useRecoilValue } from 'recoil';
 import {
   Constants,
   supportsFiles,
@@ -12,6 +13,7 @@ import {
 import type { TConversation } from 'librechat-data-provider';
 import { useGetFileConfig, useGetEndpointsQuery, useGetAgentByIdQuery } from '~/data-provider';
 import { useAgentsMapContext } from '~/Providers';
+import { directAttachByConvoId } from '~/store';
 import AttachFileMenu from './AttachFileMenu';
 import AttachFile from './AttachFile';
 
@@ -80,13 +82,23 @@ function AttachFileChat({
     [disableInputs, endpointFileConfig?.disabled],
   );
 
+  // Check if Direct Attach is enabled - if so, always show the button
+  const directAttachEnabled = useRecoilValue(directAttachByConvoId(conversationId));
+
+  // Always show button if Direct Attach is enabled, or if endpoint supports files
+  const shouldShowButton = directAttachEnabled || endpointSupportsFiles || isAgents;
+
+  if (!shouldShowButton) {
+    return null;
+  }
+
   if (isAssistants && endpointSupportsFiles && !isUploadDisabled) {
     return <AttachFile disabled={disableInputs} />;
-  } else if (isAgents || (endpointSupportsFiles && !isUploadDisabled)) {
+  } else if (isAgents || (endpointSupportsFiles && !isUploadDisabled) || directAttachEnabled) {
     return (
       <AttachFileMenu
         endpoint={endpoint}
-        disabled={disableInputs}
+        disabled={disableInputs && !directAttachEnabled} // Allow uploads when Direct Attach is ON even if inputs are disabled
         endpointType={endpointType}
         conversationId={conversationId}
         agentId={conversation?.agent_id}

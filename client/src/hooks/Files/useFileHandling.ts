@@ -16,6 +16,7 @@ import debounce from 'lodash/debounce';
 import type { TEndpointsConfig, TError } from 'librechat-data-provider';
 import type { ExtendedFile, FileSetter } from '~/common';
 import { useGetFileConfig, useUploadFileMutation } from '~/data-provider';
+import { dataService } from 'librechat-data-provider';
 import useLocalize, { TranslationKeys } from '~/hooks/useLocalize';
 import { useDelayedUploadToast } from './useDelayedUploadToast';
 import { processFileForUpload } from '~/utils/heicConverter';
@@ -38,7 +39,7 @@ const useFileHandling = (params?: UseFileHandling) => {
   const [errors, setErrors] = useState<string[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { startUploadTimer, clearUploadTimer } = useDelayedUploadToast();
-  const { files, setFiles, setFilesLoading, conversation } = useChatContext();
+  const { files, setFiles, setFilesLoading, conversation, ask } = useChatContext();
   const conversationId = conversation?.conversationId ?? Constants.NEW_CONVO;
   const setEphemeralAgent = useSetRecoilState(
     ephemeralAgentByConvoId(conversationId),
@@ -188,6 +189,47 @@ const useFileHandling = (params?: UseFileHandling) => {
     if (!isAssistantsEndpoint(endpointType ?? endpoint)) {
       // Direct Attach mode: bypass RAG/indexing
       if (directAttachEnabled) {
+        // Check if file is video or audio - use direct transcript endpoint
+        const fileType = extendedFile.file?.type || '';
+        const isVideo = fileType.startsWith('video/');
+        const isAudio = fileType.startsWith('audio/');
+        
+        if (isVideo || isAudio) {
+          // Use direct transcript endpoint for video/audio files
+          try {
+            const transcriptFormData = new FormData();
+            transcriptFormData.append('file', extendedFile.file as File, encodeURIComponent(filename));
+            
+            const response = await dataService.uploadDirectTranscribe(
+              transcriptFormData,
+              abortControllerRef.current?.signal,
+            );
+            
+            clearUploadTimer(extendedFile.file_id);
+            deleteFileById(extendedFile.file_id);
+            
+            // Send transcript as a message to the chat
+            if (ask && response.transcript) {
+              const transcriptMessage = `[Transcript from ${filename}]\n\n${response.transcript}`;
+              ask({ text: transcriptMessage });
+            }
+            
+            showToast({
+              message: `Transcript generated successfully from ${filename}`,
+              status: 'success',
+            });
+            
+            return;
+          } catch (error) {
+            console.error('Direct transcript error:', error);
+            const errorMessage = (error as TError)?.response?.data?.message || 'Failed to generate transcript. Please try again.';
+            setError(errorMessage);
+            clearUploadTimer(extendedFile.file_id);
+            deleteFileById(extendedFile.file_id);
+            return;
+          }
+        }
+        
         formData.append('message_file', 'true');
         // Don't append tool_resource - this bypasses RAG flow
       } else {

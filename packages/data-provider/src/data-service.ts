@@ -382,6 +382,23 @@ export const uploadFile = (data: FormData, signal?: AbortSignal | null): Promise
   return request.postMultiPart(endpoints.files(), data, requestConfig);
 };
 
+export interface DirectTranscribeResponse {
+  transcript: string;
+  file_id: string;
+  filename: string;
+  stored_path: string;
+  size: number;
+  mimetype: string;
+}
+
+export const uploadDirectTranscribe = (
+  data: FormData,
+  signal?: AbortSignal | null,
+): Promise<DirectTranscribeResponse> => {
+  const requestConfig = signal ? { signal } : undefined;
+  return request.postMultiPart(endpoints.directTranscribe(), data, requestConfig);
+};
+
 /* actions */
 
 export const updateAction = (data: m.UpdateActionVariables): Promise<m.UpdateActionResponse> => {

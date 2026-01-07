@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { useRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 import * as Ariakit from '@ariakit/react';
 import {
   FileSearch,
@@ -7,6 +7,8 @@ import {
   FileType2Icon,
   FileImageIcon,
   TerminalSquareIcon,
+  VideoIcon,
+  MusicIcon,
 } from 'lucide-react';
 import {
   Providers,
@@ -33,9 +35,10 @@ import {
 import useSharePointFileHandling from '~/hooks/Files/useSharePointFileHandling';
 import { SharePointPickerDialog } from '~/components/SharePoint';
 import { useGetStartupConfig } from '~/data-provider';
-import { ephemeralAgentByConvoId } from '~/store';
+import { ephemeralAgentByConvoId, directAttachByConvoId } from '~/store';
 import { MenuItemProps } from '~/common';
 import { cn } from '~/utils';
+import { Constants } from 'librechat-data-provider';
 import DirectAttachToggle from './DirectAttachToggle';
 
 type FileUploadType = 'image' | 'document' | 'image_document' | 'image_document_video_audio';
@@ -60,7 +63,12 @@ const AttachFileMenu = ({
   useResponsesApi,
 }: AttachFileMenuProps) => {
   const localize = useLocalize();
-  const isUploadDisabled = disabled ?? false;
+  const directAttachEnabled = useRecoilValue(directAttachByConvoId(conversationId || Constants.NEW_CONVO));
+  // Allow uploads when Direct Attach is ON, even if disabled prop is true
+  // Force enable when Direct Attach is ON
+  // IMPORTANT: Button should always be clickable to open menu (even if uploads are disabled)
+  // This allows users to toggle Direct Attach ON even when other inputs are disabled
+  const isUploadDisabled = directAttachEnabled ? false : (disabled ?? false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isPopoverActive, setIsPopoverActive] = useState(false);
   const [ephemeralAgent, setEphemeralAgent] = useRecoilState(
@@ -102,6 +110,8 @@ const AttachFileMenu = ({
       inputRef.current.accept = 'image/*,.heif,.heic,.pdf,application/pdf';
     } else if (fileType === 'image_document_video_audio') {
       inputRef.current.accept = 'image/*,.heif,.heic,.pdf,application/pdf,video/*,audio/*';
+    } else if (fileType === 'video_audio') {
+      inputRef.current.accept = 'video/*,audio/*';
     } else {
       inputRef.current.accept = '';
     }
@@ -122,6 +132,26 @@ const AttachFileMenu = ({
         separate: true, // Add separator after toggle
       },
     ];
+
+    // Add video/audio upload button when Direct Attach is ON
+    if (directAttachEnabled) {
+      items.push({
+        label: localize('com_ui_upload_video_audio_transcribe') || 'Upload Video/Audio for Transcript',
+        onClick: () => {
+          // Always allow when Direct Attach is ON
+          if (isUploadDisabled && !directAttachEnabled) {
+            return; // Don't allow upload if disabled and Direct Attach is OFF
+          }
+          setToolResource(undefined);
+          handleUploadClick('video_audio');
+        },
+        icon: <VideoIcon className="icon-md text-text-secondary" />,
+        disabled: isUploadDisabled && !directAttachEnabled, // Enable when Direct Attach is ON
+      });
+      items.push({
+        separate: true, // Add separator after video/audio option
+      });
+    }
 
     const createMenuItems = (onAction: (fileType?: FileUploadType) => void) => {
       const menuItems: MenuItemProps[] = [];
@@ -144,6 +174,9 @@ const AttachFileMenu = ({
         menuItems.push({
           label: localize('com_ui_upload_provider'),
           onClick: () => {
+            if (isUploadDisabled && !directAttachEnabled) {
+              return; // Don't allow upload if disabled and Direct Attach is OFF
+            }
             setToolResource(undefined);
             let fileType: Exclude<FileUploadType, 'image' | 'document'> = 'image_document';
             if (currentProvider === Providers.GOOGLE || currentProvider === Providers.OPENROUTER) {
@@ -152,15 +185,20 @@ const AttachFileMenu = ({
             onAction(fileType);
           },
           icon: <FileImageIcon className="icon-md text-text-secondary" />,
+          disabled: isUploadDisabled && !directAttachEnabled,
         });
       } else {
         menuItems.push({
           label: localize('com_ui_upload_image_input'),
           onClick: () => {
+            if (isUploadDisabled && !directAttachEnabled) {
+              return; // Don't allow upload if disabled and Direct Attach is OFF
+            }
             setToolResource(undefined);
             onAction('image');
           },
           icon: <ImageUpIcon className="icon-md text-text-secondary" />,
+          disabled: isUploadDisabled && !directAttachEnabled,
         });
       }
 
@@ -239,19 +277,26 @@ const AttachFileMenu = ({
     codeAllowedByAgent,
     fileSearchAllowedByAgent,
     setIsSharePointDialogOpen,
+    directAttachEnabled,
   ]);
 
+  // Button should always be clickable to open menu, even if uploads are disabled
+  // This allows users to toggle Direct Attach ON
   const menuTrigger = (
     <TooltipAnchor
       render={
         <Ariakit.MenuButton
-          disabled={isUploadDisabled}
+          disabled={false} // Always allow opening menu
           id="attach-file-menu-button"
           aria-label="Attach File Options"
           className={cn(
-            'flex size-9 items-center justify-center rounded-full p-1 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-opacity-50',
+            'flex size-9 items-center justify-center rounded-full p-1 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-opacity-50 cursor-pointer',
             isPopoverActive && 'bg-surface-hover',
           )}
+          style={{ 
+            pointerEvents: 'auto',
+            zIndex: 10,
+          }}
         >
           <div className="flex w-full items-center justify-center gap-2">
             <AttachmentIcon />
@@ -260,7 +305,7 @@ const AttachFileMenu = ({
       }
       id="attach-file-menu-button"
       description={localize('com_sidepanel_attach_files')}
-      disabled={isUploadDisabled}
+      disabled={false} // Always allow opening menu
     />
   );
   const handleSharePointFilesSelected = async (sharePointFiles: any[]) => {

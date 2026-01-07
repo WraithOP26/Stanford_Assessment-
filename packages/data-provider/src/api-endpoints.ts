@@ -251,6 +251,7 @@ export const fileConfig = () => `${BASE_URL}/api/files/config`;
 export const agentFiles = (agentId: string) => `${BASE_URL}/api/files/agent/${agentId}`;
 
 export const images = () => `${files()}/images`;
+export const directTranscribe = () => `${files()}/direct-transcribe`;
 
 export const avatar = () => `${images()}/avatar`;
 

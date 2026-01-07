@@ -33,6 +33,9 @@ const { getAssistant } = require('~/models/Assistant');
 const { getAgent } = require('~/models/Agent');
 const { getLogStores } = require('~/cache');
 const { Readable } = require('stream');
+const { STTService } = require('~/server/services/Files/Audio/STTService');
+const path = require('path');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -458,6 +461,145 @@ router.post('/', async (req, res) => {
       }
     } else {
       logger.debug('[/files] File processing completed without cleanup');
+    }
+  }
+});
+
+/**
+ * Direct transcript endpoint - bypasses RAG/indexing
+ * Processes video/audio files and returns transcript directly
+ */
+router.post('/direct-transcribe', async (req, res) => {
+  let cleanup = true;
+  const { file } = req;
+
+  try {
+    if (!file) {
+      return res.status(400).json({ message: 'No file provided' });
+    }
+
+    // Validate file type (video or audio)
+    const isVideo = file.mimetype.startsWith('video/');
+    const isAudio = file.mimetype.startsWith('audio/');
+
+    if (!isVideo && !isAudio) {
+      return res.status(400).json({ 
+        message: 'File must be a video or audio file',
+        mimetype: file.mimetype 
+      });
+    }
+
+    // Check OpenAI API key
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({ 
+        message: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.' 
+      });
+    }
+
+    // Store file on local filesystem
+    const appConfig = req.config;
+    const uploadsDir = appConfig.paths.uploads || path.join(process.cwd(), 'uploads');
+    const directAttachDir = path.join(uploadsDir, 'direct-attach', req.user.id);
+    
+    // Ensure directory exists
+    await fs.mkdir(directAttachDir, { recursive: true });
+
+    // Generate unique filename
+    const fileExtension = path.extname(file.originalname) || (isVideo ? '.mp4' : '.mp3');
+    const fileId = crypto.randomUUID();
+    const storedFilename = `${fileId}${fileExtension}`;
+    const storedPath = path.join(directAttachDir, storedFilename);
+
+    // Copy file to storage location
+    await fs.copyFile(file.path, storedPath);
+
+    // For video files, we'll need to extract audio first
+    // For now, we'll use the STT service which can handle audio
+    // Note: Video files may need ffmpeg to extract audio - this is a simplified version
+    let audioPath = file.path;
+    let shouldDeleteAudio = false;
+
+    if (isVideo) {
+      // For video files, we need to extract audio
+      // This requires ffmpeg - for now, we'll return an error suggesting audio extraction
+      // In production, you'd use ffmpeg to extract audio track
+      logger.warn('[direct-transcribe] Video file received - audio extraction needed');
+      // For MVP, we'll try to process as-is (OpenAI Whisper can handle some video formats)
+      audioPath = file.path;
+    }
+
+    // Use STT service to generate transcript
+    const sttService = await STTService.getInstance();
+    const audioBuffer = await fs.readFile(audioPath);
+    const audioFile = {
+      originalname: file.originalname,
+      mimetype: isVideo ? 'audio/mp4' : file.mimetype, // Adjust for video
+      size: file.size,
+    };
+
+    // Get OpenAI STT schema
+    const sttSchema = {
+      url: 'https://api.openai.com/v1/audio/transcriptions',
+      apiKey: OPENAI_API_KEY,
+      model: 'whisper-1',
+    };
+
+    // Generate transcript using OpenAI Whisper
+    const transcript = await sttService.sttRequest('openai', sttSchema, {
+      audioBuffer,
+      audioFile,
+      language: req.body?.language || '',
+    });
+
+    // Clean up temporary files
+    if (shouldDeleteAudio && audioPath !== file.path) {
+      try {
+        await fs.unlink(audioPath);
+      } catch (error) {
+        logger.error('[direct-transcribe] Error deleting extracted audio:', error);
+      }
+    }
+
+    cleanup = false; // File is stored, don't delete
+
+    // Return transcript and file info
+    res.json({
+      transcript,
+      file_id: fileId,
+      filename: file.originalname,
+      stored_path: storedPath,
+      size: file.size,
+      mimetype: file.mimetype,
+    });
+  } catch (error) {
+    logger.error('[/files/direct-transcribe] Error processing file:', error);
+    
+    let message = 'Error generating transcript';
+    if (error.message?.includes('API key')) {
+      message = 'OpenAI API key error. Please check your OPENAI_API_KEY configuration.';
+    } else if (error.message?.includes('file size')) {
+      message = 'File size exceeds limit. Maximum size is 25MB for OpenAI Whisper.';
+    } else {
+      message = error.message || message;
+    }
+
+    try {
+      if (cleanup && file?.path) {
+        await fs.unlink(file.path);
+      }
+    } catch (unlinkError) {
+      logger.error('[/files/direct-transcribe] Error deleting file:', unlinkError);
+    }
+
+    res.status(500).json({ message });
+  } finally {
+    if (cleanup && file?.path) {
+      try {
+        await fs.unlink(file.path);
+      } catch (error) {
+        logger.error('[/files/direct-transcribe] Error deleting temp file:', error);
+      }
     }
   }
 });
