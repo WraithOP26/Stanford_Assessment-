@@ -351,6 +351,7 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
                       ref={submitButtonRef}
                       control={methods.control}
                       disabled={filesLoading || isSubmitting || disableInputs || isNotAppendable}
+                      hasFiles={files && files.size > 0}
                     />
                   )
                 )}

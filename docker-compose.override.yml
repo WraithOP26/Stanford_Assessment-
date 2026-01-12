@@ -11,6 +11,38 @@ services:
       - type: bind
         source: ./client/dist
         target: /app/client/dist
+      # Mount changed files so they're available immediately
+      - type: bind
+        source: ./api/server/routes/files/files.js
+        target: /app/api/server/routes/files/files.js
+      - type: bind
+        source: ./api/server/routes/files/index.js
+        target: /app/api/server/routes/files/index.js
+      - type: bind
+        source: ./api/server/middleware/accessResources/canAccessAgentFromBody.js
+        target: /app/api/server/middleware/accessResources/canAccessAgentFromBody.js
+      - type: bind
+        source: ./api/server/controllers/agents/request.js
+        target: /app/api/server/controllers/agents/request.js
+      - type: bind
+        source: ./api/server/routes/agents/index.js
+        target: /app/api/server/routes/agents/index.js
+      - type: bind
+        source: ./api/server/services/Files/process.js
+        target: /app/api/server/services/Files/process.js
+      - type: bind
+        source: ./api/server/services/Files/Audio/STTService.js
+        target: /app/api/server/services/Files/Audio/STTService.js
+      - type: bind
+        source: ./api/server/services/Files/Audio/extractAudio.js
+        target: /app/api/server/services/Files/Audio/extractAudio.js
     # Use the latest numbered release image
     image: ghcr.io/danny-avila/librechat:latest
-
+    # Install ffmpeg for video audio extraction
+    # Note: This runs as root initially (before user switch in docker-compose.yml)
+    command: >
+      sh -c "
+        apk add --no-cache ffmpeg 2>/dev/null || (apt-get update && apt-get install -y ffmpeg) 2>/dev/null || true &&
+        node api/server/index.js
+      "
+    user: root

@@ -64,4 +64,12 @@ interface:
   multiConvo: true
   agents: true
 
+# Speech-to-Text (STT) configuration for audio transcription
+speech:
+  stt:
+    openai:
+      apiKey: ${OPENAI_API_KEY}
+      model: whisper-1
+      url: https://api.openai.com/v1/audio/transcriptions
+
 

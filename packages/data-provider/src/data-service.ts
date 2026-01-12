@@ -383,12 +383,14 @@ export const uploadFile = (data: FormData, signal?: AbortSignal | null): Promise
 };
 
 export interface DirectTranscribeResponse {
-  transcript: string;
+  transcript?: string;  // Optional - only for audio/video
+  content?: string;     // For text and other file types
   file_id: string;
   filename: string;
   stored_path: string;
   size: number;
   mimetype: string;
+  note?: string;        // Optional note for unsupported types
 }
 
 export const uploadDirectTranscribe = (

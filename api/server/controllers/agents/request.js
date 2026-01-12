@@ -359,12 +359,17 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     });
   } catch (error) {
     logger.error('[ResumableAgentController] Initialization error:', error);
+    
+    // CRITICAL FIX: Always send streamId response, even on error
+    // This allows the frontend to connect to the stream and receive the error via SSE
     if (!res.headersSent) {
-      res.status(500).json({ error: error.message || 'Failed to start generation' });
+      res.json({ streamId, conversationId, status: 'error', error: error.message || 'Failed to start generation' });
     } else {
       // JSON already sent, emit error to stream so client can receive it
       GenerationJobManager.emitError(streamId, error.message || 'Failed to start generation');
     }
+    
+    // Still complete the job and clean up
     GenerationJobManager.completeJob(streamId, error.message);
     await decrementPendingRequest(userId);
     if (client) {

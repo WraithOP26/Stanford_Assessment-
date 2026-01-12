@@ -3,10 +3,17 @@ const {
   Constants,
   ResourceType,
   isAgentsEndpoint,
-  isEphemeralAgentId,
 } = require('librechat-data-provider');
 const { canAccessResource } = require('./canAccessResource');
 const { getAgent } = require('~/models/Agent');
+
+/**
+ * Checks if an agent ID is ephemeral (non-saved agent).
+ * Real agent IDs always start with "agent_", so anything else is ephemeral.
+ */
+const isEphemeralAgentId = (agentId) => {
+  return !agentId?.startsWith('agent_');
+};
 
 /**
  * Agent ID resolver function for agent_id from request body
@@ -53,6 +60,16 @@ const canAccessAgentFromBody = (options) => {
 
   return async (req, res, next) => {
     try {
+      // For GET requests, skip this middleware (no body to check)
+      if (req.method === 'GET') {
+        return next();
+      }
+      
+      // Ensure req.body exists before destructuring
+      if (!req.body) {
+        return next();
+      }
+      
       const { endpoint, agent_id } = req.body;
       let agentId = agent_id;
 

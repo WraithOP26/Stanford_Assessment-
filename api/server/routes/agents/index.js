@@ -119,8 +119,13 @@ router.get('/chat/stream/:streamId', async (req, res) => {
  * @returns { activeJobIds: string[] }
  */
 router.get('/chat/active', async (req, res) => {
-  const activeJobIds = await GenerationJobManager.getActiveJobIdsForUser(req.user.id);
-  res.json({ activeJobIds });
+  try {
+    const activeJobIds = await GenerationJobManager.getActiveJobIdsForUser(req.user.id);
+    res.json({ activeJobIds });
+  } catch (error) {
+    logger.error('[GET /chat/active] Error:', error);
+    res.status(500).json({ error: 'Internal Server Error', activeJobIds: [] });
+  }
 });
 
 /**
@@ -130,32 +135,37 @@ router.get('/chat/active', async (req, res) => {
  * @returns { active, streamId, status, aggregatedContent, createdAt, resumeState }
  */
 router.get('/chat/status/:conversationId', async (req, res) => {
-  const { conversationId } = req.params;
+  try {
+    const { conversationId } = req.params;
 
-  // streamId === conversationId, so we can use getJob directly
-  const job = await GenerationJobManager.getJob(conversationId);
+    // streamId === conversationId, so we can use getJob directly
+    const job = await GenerationJobManager.getJob(conversationId);
 
-  if (!job) {
-    return res.json({ active: false });
+    if (!job) {
+      return res.json({ active: false });
+    }
+
+    if (job.metadata.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Get resume state which contains aggregatedContent
+    // Avoid calling both getStreamInfo and getResumeState (both fetch content)
+    const resumeState = await GenerationJobManager.getResumeState(conversationId);
+    const isActive = job.status === 'running';
+
+    res.json({
+      active: isActive,
+      streamId: conversationId,
+      status: job.status,
+      aggregatedContent: resumeState?.aggregatedContent ?? [],
+      createdAt: job.createdAt,
+      resumeState,
+    });
+  } catch (error) {
+    logger.error('[GET /chat/status] Error:', error);
+    res.status(500).json({ error: 'Internal Server Error', active: false });
   }
-
-  if (job.metadata.userId !== req.user.id) {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-
-  // Get resume state which contains aggregatedContent
-  // Avoid calling both getStreamInfo and getResumeState (both fetch content)
-  const resumeState = await GenerationJobManager.getResumeState(conversationId);
-  const isActive = job.status === 'running';
-
-  res.json({
-    active: isActive,
-    streamId: conversationId,
-    status: job.status,
-    aggregatedContent: resumeState?.aggregatedContent ?? [],
-    createdAt: job.createdAt,
-    resumeState,
-  });
 });
 
 /**

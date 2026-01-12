@@ -2,6 +2,7 @@ const fs = require('fs').promises;
 const express = require('express');
 const { EnvVar } = require('@librechat/agents');
 const { logger } = require('@librechat/data-schemas');
+const { createMulterInstance } = require('./multer');
 const {
   Time,
   isUUID,
@@ -38,6 +39,24 @@ const path = require('path');
 const crypto = require('crypto');
 
 const router = express.Router();
+
+// Initialize multer for direct-transcribe (lazy initialization)
+let directTranscribeMulter = null;
+const getDirectTranscribeMulter = async () => {
+  if (!directTranscribeMulter) {
+    directTranscribeMulter = await createMulterInstance();
+  }
+  return directTranscribeMulter;
+};
+
+// Initialize multer for main POST route (lazy initialization)
+let mainUploadMulter = null;
+const getMainUploadMulter = async () => {
+  if (!mainUploadMulter) {
+    mainUploadMulter = await createMulterInstance();
+  }
+  return mainUploadMulter;
+};
 
 router.get('/', async (req, res) => {
   try {
@@ -370,7 +389,18 @@ router.get('/download/:userId/:file_id', fileAccess, async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+// Wrapper middleware to apply multer with lazy initialization
+const multerMiddleware = async (req, res, next) => {
+  try {
+    const upload = await getMainUploadMulter();
+    upload.single('file')(req, res, next);
+  } catch (error) {
+    logger.error('[/files] Error initializing multer:', error);
+    return res.status(500).json({ message: 'Error processing file upload' });
+  }
+};
+
+router.post('/', multerMiddleware, async (req, res) => {
   const metadata = req.body;
   let cleanup = true;
 
@@ -467,141 +497,341 @@ router.post('/', async (req, res) => {
 
 /**
  * Direct transcript endpoint - bypasses RAG/indexing
- * Processes video/audio files and returns transcript directly
+ * Processes all file types:
+ * - Audio/Video: Generates transcript using OpenAI Whisper
+ * - Text files: Reads and returns content
+ * - Other files: Returns metadata (future: extract content)
  */
-router.post('/direct-transcribe', async (req, res) => {
-  let cleanup = true;
-  const { file } = req;
-
+router.post('/direct-transcribe', async (req, res, next) => {
+  // CRITICAL: Log immediately when route matches - use both console and logger for Docker visibility
+  const logData = {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    url: req.url,
+    baseUrl: req.baseUrl,
+    hasBody: !!req.body,
+    contentType: req.headers['content-type'],
+    user: req.user?.id || 'no-user',
+    timestamp: new Date().toISOString(),
+  };
+  
+  // Force output to stderr/stdout for Docker logs
+  console.error('[DIRECT-TRANSCRIBE] ===== ROUTE MATCHED =====');
+  console.error('[DIRECT-TRANSCRIBE] Route matched!', JSON.stringify(logData, null, 2));
+  logger.error('[direct-transcribe] Route matched!', logData);
+  
   try {
-    if (!file) {
-      return res.status(400).json({ message: 'No file provided' });
-    }
-
-    // Validate file type (video or audio)
-    const isVideo = file.mimetype.startsWith('video/');
-    const isAudio = file.mimetype.startsWith('audio/');
-
-    if (!isVideo && !isAudio) {
-      return res.status(400).json({ 
-        message: 'File must be a video or audio file',
-        mimetype: file.mimetype 
-      });
-    }
-
-    // Check OpenAI API key
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) {
-      return res.status(500).json({ 
-        message: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.' 
-      });
-    }
-
-    // Store file on local filesystem
-    const appConfig = req.config;
-    const uploadsDir = appConfig.paths.uploads || path.join(process.cwd(), 'uploads');
-    const directAttachDir = path.join(uploadsDir, 'direct-attach', req.user.id);
+    // Apply multer middleware first
+    const multer = await getDirectTranscribeMulter();
+    console.error('[DIRECT-TRANSCRIBE] Multer instance obtained');
+    logger.error('[direct-transcribe] Multer instance obtained');
     
-    // Ensure directory exists
-    await fs.mkdir(directAttachDir, { recursive: true });
-
-    // Generate unique filename
-    const fileExtension = path.extname(file.originalname) || (isVideo ? '.mp4' : '.mp3');
-    const fileId = crypto.randomUUID();
-    const storedFilename = `${fileId}${fileExtension}`;
-    const storedPath = path.join(directAttachDir, storedFilename);
-
-    // Copy file to storage location
-    await fs.copyFile(file.path, storedPath);
-
-    // For video files, we'll need to extract audio first
-    // For now, we'll use the STT service which can handle audio
-    // Note: Video files may need ffmpeg to extract audio - this is a simplified version
-    let audioPath = file.path;
-    let shouldDeleteAudio = false;
-
-    if (isVideo) {
-      // For video files, we need to extract audio
-      // This requires ffmpeg - for now, we'll return an error suggesting audio extraction
-      // In production, you'd use ffmpeg to extract audio track
-      logger.warn('[direct-transcribe] Video file received - audio extraction needed');
-      // For MVP, we'll try to process as-is (OpenAI Whisper can handle some video formats)
-      audioPath = file.path;
-    }
-
-    // Use STT service to generate transcript
-    const sttService = await STTService.getInstance();
-    const audioBuffer = await fs.readFile(audioPath);
-    const audioFile = {
-      originalname: file.originalname,
-      mimetype: isVideo ? 'audio/mp4' : file.mimetype, // Adjust for video
-      size: file.size,
-    };
-
-    // Get OpenAI STT schema
-    const sttSchema = {
-      url: 'https://api.openai.com/v1/audio/transcriptions',
-      apiKey: OPENAI_API_KEY,
-      model: 'whisper-1',
-    };
-
-    // Generate transcript using OpenAI Whisper
-    const transcript = await sttService.sttRequest('openai', sttSchema, {
-      audioBuffer,
-      audioFile,
-      language: req.body?.language || '',
-    });
-
-    // Clean up temporary files
-    if (shouldDeleteAudio && audioPath !== file.path) {
-      try {
-        await fs.unlink(audioPath);
-      } catch (error) {
-        logger.error('[direct-transcribe] Error deleting extracted audio:', error);
+    multer.single('file')(req, res, async (err) => {
+      console.error('[DIRECT-TRANSCRIBE] Multer callback called', { 
+        hasError: !!err, 
+        errorMessage: err?.message,
+        hasFile: !!req.file,
+        fileSize: req.file?.size,
+      });
+      
+      if (err) {
+        logger.error('[direct-transcribe] Multer error:', {
+          message: err.message,
+          stack: err.stack,
+          code: err.code,
+        });
+        console.error('[DIRECT-TRANSCRIBE] Multer error details:', err);
+        return res.status(400).json({ message: err.message || 'File upload error' });
       }
-    }
+    
+      // Now process the file
+      console.error('[DIRECT-TRANSCRIBE] Route handler called', {
+        hasFile: !!req.file,
+        method: req.method,
+        path: req.path,
+        originalUrl: req.originalUrl,
+        url: req.url,
+        baseUrl: req.baseUrl,
+      });
+      logger.error('[direct-transcribe] Route handler called', {
+        hasFile: !!req.file,
+        method: req.method,
+        path: req.path,
+        originalUrl: req.originalUrl,
+        url: req.url,
+        baseUrl: req.baseUrl,
+      });
+      
+      let cleanup = true;
+      const { file } = req;
 
-    cleanup = false; // File is stored, don't delete
+      try {
+        if (!file) {
+          logger.error('[direct-transcribe] No file in request', {
+            body: req.body,
+            files: req.files,
+          });
+          console.error('[DIRECT-TRANSCRIBE] ERROR: No file in request');
+          return res.status(400).json({ message: 'No file provided' });
+        }
 
-    // Return transcript and file info
-    res.json({
-      transcript,
-      file_id: fileId,
-      filename: file.originalname,
-      stored_path: storedPath,
-      size: file.size,
-      mimetype: file.mimetype,
-    });
+        // Determine file type
+        const isVideo = file.mimetype.startsWith('video/');
+        const isAudio = file.mimetype.startsWith('audio/');
+        
+        // Check file extension for better detection (some files have incorrect MIME types)
+        const fileExt = path.extname(file.originalname).toLowerCase();
+        const isText = file.mimetype.startsWith('text/') || 
+                       ['application/json', 'application/csv', 'text/csv', 'text/plain'].includes(file.mimetype) ||
+                       ['.txt', '.csv', '.json', '.tsv', '.log', '.md', '.markdown'].includes(fileExt);
+        
+        console.error('[DIRECT-TRANSCRIBE] File type detection:', {
+          filename: file.originalname,
+          mimetype: file.mimetype,
+          extension: fileExt,
+          isVideo,
+          isAudio,
+          isText,
+          size: file.size,
+        });
+        logger.error('[direct-transcribe] File type detection:', {
+          filename: file.originalname,
+          mimetype: file.mimetype,
+          extension: fileExt,
+          isVideo,
+          isAudio,
+          isText,
+          size: file.size,
+        });
+
+        // Store file on local filesystem
+        const appConfig = req.config;
+        const uploadsDir = appConfig.paths.uploads || path.join(process.cwd(), 'uploads');
+        const directAttachDir = path.join(uploadsDir, 'direct-attach', req.user.id);
+        
+        // Ensure directory exists
+        await fs.mkdir(directAttachDir, { recursive: true });
+
+        // Generate unique filename
+        const fileExtension = fileExt || 
+                             (isVideo ? '.mp4' : isAudio ? '.mp3' : '.txt');
+        const fileId = crypto.randomUUID();
+        const storedFilename = `${fileId}${fileExtension}`;
+        const storedPath = path.join(directAttachDir, storedFilename);
+
+        // Copy file to storage location
+        await fs.copyFile(file.path, storedPath);
+
+        // Handle audio/video files - generate transcript
+        if (isVideo || isAudio) {
+          console.error('[DIRECT-TRANSCRIBE] Processing audio/video file:', file.originalname);
+          logger.error('[direct-transcribe] Processing audio/video file:', file.originalname);
+          
+          // Check OpenAI API key for audio/video processing
+          const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+          if (!OPENAI_API_KEY) {
+            console.error('[DIRECT-TRANSCRIBE] ERROR: OpenAI API key not configured');
+            logger.error('[direct-transcribe] ERROR: OpenAI API key not configured');
+            return res.status(500).json({ 
+              message: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.' 
+            });
+          }
+
+          // For video files, we'll need to extract audio first
+          // For now, we'll use the STT service which can handle audio
+          // Note: Video files may need ffmpeg to extract audio - this is a simplified version
+          let audioPath = file.path;
+          let shouldDeleteAudio = false;
+
+          if (isVideo) {
+            // For video files, we need to extract audio
+            // This requires ffmpeg - for now, we'll return an error suggesting audio extraction
+            // In production, you'd use ffmpeg to extract audio track
+            console.error('[DIRECT-TRANSCRIBE] Video file received - attempting to process with Whisper');
+            logger.error('[direct-transcribe] Video file received - audio extraction needed');
+            // For MVP, we'll try to process as-is (OpenAI Whisper can handle some video formats)
+            audioPath = file.path;
+          }
+
+          // Use STT service to generate transcript
+          const sttService = await STTService.getInstance();
+          const audioBuffer = await fs.readFile(audioPath);
+          const audioFile = {
+            originalname: file.originalname,
+            mimetype: isVideo ? 'audio/mp4' : file.mimetype, // Adjust for video
+            size: file.size,
+          };
+
+          // Get OpenAI STT schema
+          const sttSchema = {
+            url: 'https://api.openai.com/v1/audio/transcriptions',
+            apiKey: OPENAI_API_KEY,
+            model: 'whisper-1',
+          };
+
+          // Generate transcript using OpenAI Whisper
+          console.error('[DIRECT-TRANSCRIBE] Calling OpenAI Whisper API...');
+          logger.error('[direct-transcribe] Calling OpenAI Whisper API');
+          
+          const transcript = await sttService.sttRequest('openai', sttSchema, {
+            audioBuffer,
+            audioFile,
+            language: req.body?.language || '',
+          });
+          
+          console.error('[DIRECT-TRANSCRIBE] Transcript received, length:', transcript?.length || 0);
+          logger.error('[direct-transcribe] Transcript received', { length: transcript?.length || 0 });
+
+          // Clean up temporary files
+          if (shouldDeleteAudio && audioPath !== file.path) {
+            try {
+              await fs.unlink(audioPath);
+            } catch (error) {
+              console.error('[DIRECT-TRANSCRIBE] Error deleting extracted audio:', error);
+              logger.error('[direct-transcribe] Error deleting extracted audio:', error);
+            }
+          }
+
+          cleanup = false; // File is stored, don't delete
+
+          // Return transcript and file info
+          console.error('[DIRECT-TRANSCRIBE] Success! Returning transcript response');
+          logger.error('[direct-transcribe] Success! Returning transcript response');
+          
+          return res.json({
+            transcript,
+            file_id: fileId,
+            filename: file.originalname,
+            stored_path: storedPath,
+            size: file.size,
+            mimetype: file.mimetype,
+          });
+        }
+
+        // Handle text-based files - read and return content
+        if (isText) {
+          console.error('[DIRECT-TRANSCRIBE] Processing text file:', file.originalname);
+          logger.error('[direct-transcribe] Processing text file:', file.originalname);
+          
+          try {
+            const content = await fs.readFile(file.path, 'utf-8');
+            cleanup = false;
+            
+            console.error('[DIRECT-TRANSCRIBE] Text file read successfully, length:', content?.length || 0);
+            logger.error('[direct-transcribe] Text file read successfully', { length: content?.length || 0 });
+            
+            return res.json({
+              content,  // New field for file content
+              file_id: fileId,
+              filename: file.originalname,
+              stored_path: storedPath,
+              size: file.size,
+              mimetype: file.mimetype,
+            });
+          } catch (error) {
+            // Handle encoding errors
+            console.error('[DIRECT-TRANSCRIBE] Error reading text file:', error);
+            logger.error('[direct-transcribe] Error reading text file:', error);
+            return res.status(500).json({ 
+              message: 'Error reading file content: ' + error.message 
+            });
+          }
+        }
+
+        // Handle other file types (PDF, DOCX, etc.)
+        // For now, return file metadata and indicate content extraction needed
+        // Future enhancement: Add PDF/DOCX parsing libraries
+        console.error('[DIRECT-TRANSCRIBE] Processing other file type:', file.mimetype);
+        logger.error('[direct-transcribe] Processing other file type:', file.mimetype);
+        
+        cleanup = false;
+        return res.json({
+          content: `[File: ${file.originalname}]\n\nFile uploaded successfully. Content extraction for ${file.mimetype} files coming soon.`,
+          file_id: fileId,
+          filename: file.originalname,
+          stored_path: storedPath,
+          size: file.size,
+          mimetype: file.mimetype,
+          note: 'Content extraction not yet implemented for this file type',
+        });
+      } catch (error) {
+        console.error('[DIRECT-TRANSCRIBE] ===== ERROR PROCESSING FILE =====');
+        console.error('[DIRECT-TRANSCRIBE] Error:', error.message);
+        console.error('[DIRECT-TRANSCRIBE] Stack:', error.stack);
+        logger.error('[/files/direct-transcribe] Error processing file:', error);
+        logger.error('[/files/direct-transcribe] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          file: file?.originalname,
+          mimetype: file?.mimetype,
+        });
+        
+        let message = 'Error processing file';
+        if (error.message?.includes('API key')) {
+          message = 'OpenAI API key error. Please check your OPENAI_API_KEY configuration.';
+        } else if (error.message?.includes('file size')) {
+          message = 'File size exceeds limit. Maximum size is 25MB for OpenAI Whisper.';
+        } else {
+          message = error.message || message;
+        }
+
+        try {
+          if (cleanup && file?.path) {
+            await fs.unlink(file.path);
+          }
+        } catch (unlinkError) {
+          console.error('[DIRECT-TRANSCRIBE] Error deleting file:', unlinkError);
+          logger.error('[/files/direct-transcribe] Error deleting file:', unlinkError);
+        }
+
+        // Return error with consistent structure
+        return res.status(500).json({ 
+          message,
+          error: true,
+          file_id: file ? crypto.randomUUID() : null,
+          filename: file?.originalname || 'unknown',
+        });
+      } finally {
+        if (cleanup && file?.path) {
+          try {
+            await fs.unlink(file.path);
+          } catch (error) {
+            console.error('[DIRECT-TRANSCRIBE] Error deleting temp file:', error);
+            logger.error('[/files/direct-transcribe] Error deleting temp file:', error);
+          }
+        }
+      }
+    }); // Close multer callback
   } catch (error) {
-    logger.error('[/files/direct-transcribe] Error processing file:', error);
-    
-    let message = 'Error generating transcript';
-    if (error.message?.includes('API key')) {
-      message = 'OpenAI API key error. Please check your OPENAI_API_KEY configuration.';
-    } else if (error.message?.includes('file size')) {
-      message = 'File size exceeds limit. Maximum size is 25MB for OpenAI Whisper.';
-    } else {
-      message = error.message || message;
-    }
-
-    try {
-      if (cleanup && file?.path) {
-        await fs.unlink(file.path);
-      }
-    } catch (unlinkError) {
-      logger.error('[/files/direct-transcribe] Error deleting file:', unlinkError);
-    }
-
-    res.status(500).json({ message });
-  } finally {
-    if (cleanup && file?.path) {
-      try {
-        await fs.unlink(file.path);
-      } catch (error) {
-        logger.error('[/files/direct-transcribe] Error deleting temp file:', error);
-      }
-    }
+    // Error in route handler setup (before multer)
+    console.error('[DIRECT-TRANSCRIBE] ===== FATAL ERROR IN ROUTE SETUP =====');
+    console.error('[DIRECT-TRANSCRIBE] Error:', error.message);
+    console.error('[DIRECT-TRANSCRIBE] Stack:', error.stack);
+    logger.error('[direct-transcribe] Fatal error in route setup:', error);
+    return res.status(500).json({ 
+      message: 'Internal server error: ' + error.message,
+      error: true,
+    });
   }
-});
+}); // Close route handler
+
+// Log route registration on startup - USE ERROR LEVEL TO ENSURE VISIBILITY
+logger.error('========================================');
+logger.error('[FILES ROUTER] Direct-transcribe route registered at POST /direct-transcribe');
+logger.error('[FILES ROUTER] Total routes in files router:', router.stack.length);
+const directTranscribeRoute = router.stack.find(layer => 
+  layer.route?.path === '/direct-transcribe' && layer.route?.methods?.post
+);
+if (directTranscribeRoute) {
+  logger.error('[FILES ROUTER] ✓ Direct-transcribe route FOUND in stack');
+} else {
+  logger.error('[FILES ROUTER] ✗ Direct-transcribe route NOT found in stack!');
+  logger.error('[FILES ROUTER] Available routes:', JSON.stringify(router.stack.map(layer => ({
+    path: layer.route?.path,
+    methods: layer.route?.methods
+  })), null, 2));
+}
+logger.error('========================================');
 
 module.exports = router;

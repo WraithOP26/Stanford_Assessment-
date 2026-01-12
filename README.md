@@ -1,217 +1,397 @@
-<p align="center">
-  <a href="https://librechat.ai">
-    <img src="client/public/assets/logo.svg" height="256">
-  </a>
-  <h1 align="center">
-    <a href="https://librechat.ai">LibreChat</a>
-  </h1>
-</p>
+# Stanford AI Playground
 
-<p align="center">
-  <a href="https://discord.librechat.ai"> 
-    <img
-      src="https://img.shields.io/discord/1086345563026489514?label=&logo=discord&style=for-the-badge&logoWidth=20&logoColor=white&labelColor=000000&color=blueviolet">
-  </a>
-  <a href="https://www.youtube.com/@LibreChat"> 
-    <img
-      src="https://img.shields.io/badge/YOUTUBE-red.svg?style=for-the-badge&logo=youtube&logoColor=white&labelColor=000000&logoWidth=20">
-  </a>
-  <a href="https://docs.librechat.ai"> 
-    <img
-      src="https://img.shields.io/badge/DOCS-blue.svg?style=for-the-badge&logo=read-the-docs&logoColor=white&labelColor=000000&logoWidth=20">
-  </a>
-  <a aria-label="Sponsors" href="https://github.com/sponsors/danny-avila">
-    <img
-      src="https://img.shields.io/badge/SPONSORS-brightgreen.svg?style=for-the-badge&logo=github-sponsors&logoColor=white&labelColor=000000&logoWidth=20">
-  </a>
-</p>
+A comprehensive AI chat platform with advanced file processing capabilities including video transcription, audio transcription, and document chat without RAG.
 
-<p align="center">
-<a href="https://railway.app/template/b5k2mn?referralCode=HI9hWz">
-  <img src="https://railway.app/button.svg" alt="Deploy on Railway" height="30">
-</a>
-<a href="https://zeabur.com/templates/0X2ZY8">
-  <img src="https://zeabur.com/button.svg" alt="Deploy on Zeabur" height="30"/>
-</a>
-<a href="https://template.cloud.sealos.io/deploy?templateName=librechat">
-  <img src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg" alt="Deploy on Sealos" height="30">
-</a>
-</p>
+## Features
 
-<p align="center">
-  <a href="https://www.librechat.ai/docs/translation">
-    <img 
-      src="https://img.shields.io/badge/dynamic/json.svg?style=for-the-badge&color=2096F3&label=locize&query=%24.translatedPercentage&url=https://api.locize.app/badgedata/4cb2598b-ed4d-469c-9b04-2ed531a8cb45&suffix=%+translated" 
-      alt="Translation Progress">
-  </a>
-</p>
+### 🎥 Video Transcription
+- Upload video files (MP4, MOV, WebM, etc.)
+- Automatic audio extraction using ffmpeg
+- Speech-to-text transcription using OpenAI Whisper API
+- Support for videos with audio tracks
 
+### 🎵 Audio Transcription
+- Direct audio file upload (WAV, MP3, M4A, etc.)
+- Real-time transcription using OpenAI Whisper API
+- Multiple audio format support
 
-# ✨ Features
+### 📄 Document Chat (Without RAG)
+- Upload documents (PDF, DOCX, TXT, etc.)
+- Direct file attachment to chat context
+- Ask questions and get answers based on document content
+- No indexing or RAG required - files are processed on-demand
 
-- 🖥️ **UI & Experience** inspired by ChatGPT with enhanced design and features
+## Prerequisites
 
-- 🤖 **AI Model Selection**:  
-  - Anthropic (Claude), AWS Bedrock, OpenAI, Azure OpenAI, Google, Vertex AI, OpenAI Responses API (incl. Azure)
-  - [Custom Endpoints](https://www.librechat.ai/docs/quick_start/custom_endpoints): Use any OpenAI-compatible API with LibreChat, no proxy required
-  - Compatible with [Local & Remote AI Providers](https://www.librechat.ai/docs/configuration/librechat_yaml/ai_endpoints):
-    - Ollama, groq, Cohere, Mistral AI, Apple MLX, koboldcpp, together.ai,
-    - OpenRouter, Helicone, Perplexity, ShuttleAI, Deepseek, Qwen, and more
+- **Docker** and **Docker Compose** installed
+- **Node.js** 18+ (for local development)
+- **MongoDB** (included in Docker setup)
+- **OpenAI API Key** (for Whisper transcription)
+- **AI Provider API Key** (OpenAI, Anthropic, Google, etc.)
 
-- 🔧 **[Code Interpreter API](https://www.librechat.ai/docs/features/code_interpreter)**: 
-  - Secure, Sandboxed Execution in Python, Node.js (JS/TS), Go, C/C++, Java, PHP, Rust, and Fortran
-  - Seamless File Handling: Upload, process, and download files directly
-  - No Privacy Concerns: Fully isolated and secure execution
+## Quick Start
 
-- 🔦 **Agents & Tools Integration**:  
-  - **[LibreChat Agents](https://www.librechat.ai/docs/features/agents)**:
-    - No-Code Custom Assistants: Build specialized, AI-driven helpers
-    - Agent Marketplace: Discover and deploy community-built agents
-    - Collaborative Sharing: Share agents with specific users and groups
-    - Flexible & Extensible: Use MCP Servers, tools, file search, code execution, and more
-    - Compatible with Custom Endpoints, OpenAI, Azure, Anthropic, AWS Bedrock, Google, Vertex AI, Responses API, and more
-    - [Model Context Protocol (MCP) Support](https://modelcontextprotocol.io/clients#librechat) for Tools
+### 1. Clone the Repository
 
-- 🔍 **Web Search**:  
-  - Search the internet and retrieve relevant information to enhance your AI context
-  - Combines search providers, content scrapers, and result rerankers for optimal results
-  - **Customizable Jina Reranking**: Configure custom Jina API URLs for reranking services
-  - **[Learn More →](https://www.librechat.ai/docs/features/web_search)**
+```bash
+git clone <repository-url>
+cd Stanford_Assessment-
+```
 
-- 🪄 **Generative UI with Code Artifacts**:  
-  - [Code Artifacts](https://youtu.be/GfTj7O4gmd0?si=WJbdnemZpJzBrJo3) allow creation of React, HTML, and Mermaid diagrams directly in chat
+### 2. Configure Environment Variables
 
-- 🎨 **Image Generation & Editing**
-  - Text-to-image and image-to-image with [GPT-Image-1](https://www.librechat.ai/docs/features/image_gen#1--openai-image-tools-recommended)
-  - Text-to-image with [DALL-E (3/2)](https://www.librechat.ai/docs/features/image_gen#2--dalle-legacy), [Stable Diffusion](https://www.librechat.ai/docs/features/image_gen#3--stable-diffusion-local), [Flux](https://www.librechat.ai/docs/features/image_gen#4--flux), or any [MCP server](https://www.librechat.ai/docs/features/image_gen#5--model-context-protocol-mcp)
-  - Produce stunning visuals from prompts or refine existing images with a single instruction
+Copy the example environment file:
 
-- 💾 **Presets & Context Management**:  
-  - Create, Save, & Share Custom Presets  
-  - Switch between AI Endpoints and Presets mid-chat
-  - Edit, Resubmit, and Continue Messages with Conversation branching  
-  - Create and share prompts with specific users and groups
-  - [Fork Messages & Conversations](https://www.librechat.ai/docs/features/fork) for Advanced Context control
+```bash
+cp .env.example .env
+```
 
-- 💬 **Multimodal & File Interactions**:  
-  - Upload and analyze images with Claude 3, GPT-4.5, GPT-4o, o1, Llama-Vision, and Gemini 📸  
-  - Chat with Files using Custom Endpoints, OpenAI, Azure, Anthropic, AWS Bedrock, & Google 🗃️
+Edit `.env` and set the following required variables:
 
-- 🌎 **Multilingual UI**:
-  - English, 中文 (简体), 中文 (繁體), العربية, Deutsch, Español, Français, Italiano
-  - Polski, Português (PT), Português (BR), Русский, 日本語, Svenska, 한국어, Tiếng Việt
-  - Türkçe, Nederlands, עברית, Català, Čeština, Dansk, Eesti, فارسی
-  - Suomi, Magyar, Հայերեն, Bahasa Indonesia, ქართული, Latviešu, ไทย, ئۇيغۇرچە
+```env
+# OpenAI API Key (required for transcription)
+OPENAI_API_KEY=your_openai_api_key_here
 
-- 🧠 **Reasoning UI**:  
-  - Dynamic Reasoning UI for Chain-of-Thought/Reasoning AI models like DeepSeek-R1
+# MongoDB Connection
+MONGO_URI=mongodb://127.0.0.1:27017/LibreChat
 
-- 🎨 **Customizable Interface**:  
-  - Customizable Dropdown & Interface that adapts to both power users and newcomers
+# Server Configuration
+HOST=localhost
+PORT=3080
 
-- 🗣️ **Speech & Audio**:  
-  - Chat hands-free with Speech-to-Text and Text-to-Speech  
-  - Automatically send and play Audio  
-  - Supports OpenAI, Azure OpenAI, and Elevenlabs
+# JWT Secret (generate a random string)
+JWT_SECRET=your_jwt_secret_here
 
-- 📥 **Import & Export Conversations**:  
-  - Import Conversations from LibreChat, ChatGPT, Chatbot UI  
-  - Export conversations as screenshots, markdown, text, json
+# Optional: Other AI Provider Keys
+ANTHROPIC_API_KEY=your_anthropic_key_here
+GOOGLE_API_KEY=your_google_key_here
+```
 
-- 🔍 **Search & Discovery**:  
-  - Search all messages/conversations
+### 3. Configure LibreChat
 
-- 👥 **Multi-User & Secure Access**:
-  - Multi-User, Secure Authentication with OAuth2, LDAP, & Email Login Support
-  - Built-in Moderation, and Token spend tools
+The `librechat.yaml` file is already configured with STT settings. Ensure it includes:
 
-- ⚙️ **Configuration & Deployment**:  
-  - Configure Proxy, Reverse Proxy, Docker, & many Deployment options  
-  - Use completely local or deploy on the cloud
+```yaml
+speech:
+  stt:
+    openai:
+      apiKey: ${OPENAI_API_KEY}
+      model: whisper-1
+      url: https://api.openai.com/v1/audio/transcriptions
+```
 
-- 📖 **Open-Source & Community**:  
-  - Completely Open-Source & Built in Public  
-  - Community-driven development, support, and feedback
+### 4. Start the Application
 
-[For a thorough review of our features, see our docs here](https://docs.librechat.ai/) 📚
+```bash
+# Start all services
+docker-compose up -d
 
-## 🪶 All-In-One AI Conversations with LibreChat
+# View logs
+docker-compose logs -f api
 
-LibreChat brings together the future of assistant AIs with the revolutionary technology of OpenAI's ChatGPT. Celebrating the original styling, LibreChat gives you the ability to integrate multiple AI models. It also integrates and enhances original client features such as conversation and message search, prompt templates and plugins.
+# Stop services
+docker-compose down
+```
 
-With LibreChat, you no longer need to opt for ChatGPT Plus and can instead use free or pay-per-call APIs. We welcome contributions, cloning, and forking to enhance the capabilities of this advanced chatbot platform.
+### 5. Access the Application
 
-[![Watch the video](https://raw.githubusercontent.com/LibreChat-AI/librechat.ai/main/public/images/changelog/v0.7.6.gif)](https://www.youtube.com/watch?v=ilfwGQtJNlI)
+Open your browser and navigate to:
+```
+http://localhost:3080
+```
 
-Click on the thumbnail to open the video☝️
+## Setup Instructions
 
----
+### Initial Setup
 
-## 🌐 Resources
+1. **Install Dependencies** (if running locally):
+   ```bash
+   npm install
+   ```
 
-**GitHub Repo:**
-  - **RAG API:** [github.com/danny-avila/rag_api](https://github.com/danny-avila/rag_api)
-  - **Website:** [github.com/LibreChat-AI/librechat.ai](https://github.com/LibreChat-AI/librechat.ai)
+2. **Build Frontend** (if needed):
+   ```bash
+   cd client
+   npm install
+   npm run build
+   cd ..
+   ```
 
-**Other:**
-  - **Website:** [librechat.ai](https://librechat.ai)
-  - **Documentation:** [librechat.ai/docs](https://librechat.ai/docs)
-  - **Blog:** [librechat.ai/blog](https://librechat.ai/blog)
+3. **Start MongoDB** (if not using Docker):
+   ```bash
+   # Using Docker
+   docker run -d -p 27017:27017 --name mongodb mongo:latest
+   ```
 
----
+4. **Start the Application**:
+   ```bash
+   docker-compose up -d
+   ```
 
-## 📝 Changelog
+### Docker Services
 
-Keep up with the latest updates by visiting the releases page and notes:
-- [Releases](https://github.com/danny-avila/LibreChat/releases)
-- [Changelog](https://www.librechat.ai/changelog) 
+The application consists of the following Docker services:
 
-**⚠️ Please consult the [changelog](https://www.librechat.ai/changelog) for breaking changes before updating.**
+- **api**: Backend API server (Node.js/Express)
+- **mongodb**: MongoDB database
+- **redis**: Redis cache (if configured)
+- **meilisearch**: Search engine (if configured)
 
----
+### Configuration Files
 
-## ⭐ Star History
+- **`.env`**: Environment variables (API keys, database URLs, etc.)
+- **`librechat.yaml`**: LibreChat configuration (STT settings, UI customization)
+- **`docker-compose.yml`**: Docker service definitions
+- **`docker-compose.override.yml`**: Local overrides (volume mounts, ffmpeg installation)
 
-<p align="center">
-  <a href="https://star-history.com/#danny-avila/LibreChat&Date">
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=danny-avila/LibreChat&type=Date&theme=dark" onerror="this.src='https://api.star-history.com/svg?repos=danny-avila/LibreChat&type=Date'" />
-  </a>
-</p>
-<p align="center">
-  <a href="https://trendshift.io/repositories/4685" target="_blank" style="padding: 10px;">
-    <img src="https://trendshift.io/api/badge/repositories/4685" alt="danny-avila%2FLibreChat | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
-  </a>
-  <a href="https://runacap.com/ross-index/q1-24/" target="_blank" rel="noopener" style="margin-left: 20px;">
-    <img style="width: 260px; height: 56px" src="https://runacap.com/wp-content/uploads/2024/04/ROSS_badge_white_Q1_2024.svg" alt="ROSS Index - Fastest Growing Open-Source Startups in Q1 2024 | Runa Capital" width="260" height="56"/>
-  </a>
-</p>
+## Demo Instructions
 
----
+### Demo 1: Video File Transcription
 
-## ✨ Contributions
+1. **Upload a Video File**:
+   - Click the attachment button in the chat input
+   - Select a video file (MP4, MOV, etc.) with audio
+   - Wait for upload to complete
 
-Contributions, suggestions, bug reports and fixes are welcome!
+2. **Verify Transcription**:
+   - The system will automatically:
+     - Detect the video file
+     - Extract audio using ffmpeg
+     - Transcribe using Whisper API
+     - Store the transcript
+   - You should see a message indicating the transcript is ready
 
-For new features, components, or extensions, please open an issue and discuss before sending a PR.
+3. **Ask Questions**:
+   - Ask questions about the video content
+   - The AI will use the transcript to answer
 
-If you'd like to help translate LibreChat into your language, we'd love your contribution! Improving our translations not only makes LibreChat more accessible to users around the world but also enhances the overall user experience. Please check out our [Translation Guide](https://www.librechat.ai/docs/translation).
+**Example**:
+```
+User: [Uploads video.mp4]
+System: File uploaded and processed successfully
+User: What is the main topic discussed in this video?
+AI: [Answers based on transcript]
+```
 
----
+### Demo 2: Audio File Transcription
 
-## 💖 This project exists in its current state thanks to all the people who contribute
+1. **Upload an Audio File**:
+   - Click the attachment button
+   - Select an audio file (WAV, MP3, M4A, etc.)
+   - Wait for upload to complete
 
-<a href="https://github.com/danny-avila/LibreChat/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=danny-avila/LibreChat" />
-</a>
+2. **Verify Transcription**:
+   - The system will automatically transcribe the audio
+   - Transcript is stored and available for chat
 
----
+3. **Ask Questions**:
+   - Ask questions about the audio content
 
-## 🎉 Special Thanks
+**Example**:
+```
+User: [Uploads audio.wav]
+System: File uploaded and processed successfully
+User: Summarize the key points from this audio
+AI: [Summarizes based on transcript]
+```
 
-We thank [Locize](https://locize.com) for their translation management tools that support multiple languages in LibreChat.
+### Demo 3: Document Chat (Without RAG)
 
-<p align="center">
-  <a href="https://locize.com" target="_blank" rel="noopener noreferrer">
-    <img src="https://github.com/user-attachments/assets/d6b70894-6064-475e-bb65-92a9e23e0077" alt="Locize Logo" height="50">
-  </a>
-</p>
+1. **Upload a Document**:
+   - Click the attachment button
+   - Select a document (PDF, DOCX, TXT, etc.)
+   - Wait for upload to complete
+
+2. **Ask Questions**:
+   - Ask questions about the document content
+   - The AI will read the document and answer
+
+**Example**:
+```
+User: [Uploads document.pdf]
+System: File uploaded successfully
+User: What are the main conclusions in this document?
+AI: [Answers based on document content]
+User: Can you provide more details on section 3?
+AI: [Provides detailed answer from section 3]
+```
+
+## Configuration
+
+### Environment Variables
+
+See `.env.example` for all available configuration options. Key variables:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key for Whisper transcription | Yes |
+| `MONGO_URI` | MongoDB connection string | Yes |
+| `JWT_SECRET` | Secret for JWT token signing | Yes |
+| `HOST` | Server host | No (default: localhost) |
+| `PORT` | Server port | No (default: 3080) |
+| `ANTHROPIC_API_KEY` | Anthropic API key | Optional |
+| `GOOGLE_API_KEY` | Google AI API key | Optional |
+
+### LibreChat Configuration
+
+Edit `librechat.yaml` to customize:
+
+- **STT Settings**: Speech-to-text configuration
+- **UI Customization**: Welcome messages, themes
+- **Endpoint Configuration**: AI provider settings
+
+## Architecture
+
+For detailed architecture and data flow documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+## Limitations
+
+For complete information on file size limits, supported formats, and model requirements, see [LIMITATIONS.md](./LIMITATIONS.md).
+
+### Quick Reference
+
+- **Audio/Video Files**: Max 25 MB (Whisper API limit)
+- **Document Files**: Max 512 MB (OpenAI), 100 MB (Anthropic), 20 MB (Google)
+- **Supported Formats**: See LIMITATIONS.md for complete list
+- **Processing Time**: ~1-2 seconds per minute of audio/video
+
+## Troubleshooting
+
+### Video Transcription Not Working
+
+1. **Check ffmpeg Installation**:
+   ```bash
+   docker-compose exec api ffmpeg -version
+   ```
+
+2. **Verify Audio Stream**:
+   - Ensure video file has an audio track
+   - Check logs: `docker-compose logs api | grep extractAudio`
+
+3. **Check STT Configuration**:
+   - Verify `OPENAI_API_KEY` is set in `.env`
+   - Check `librechat.yaml` has STT configuration
+
+### Audio Transcription Not Working
+
+1. **Check API Key**:
+   ```bash
+   docker-compose exec api env | grep OPENAI_API_KEY
+   ```
+
+2. **Check File Format**:
+   - Ensure file is in supported format (WAV, MP3, M4A, etc.)
+   - Check file size is under 25 MB
+
+3. **Check Logs**:
+   ```bash
+   docker-compose logs api | grep STT
+   ```
+
+### Document Chat Not Working
+
+1. **Check File Format**:
+   - Ensure document is in supported format (PDF, DOCX, TXT, etc.)
+
+2. **Check File Size**:
+   - Verify file is under size limit for your AI provider
+
+3. **Check AI Provider**:
+   - Ensure API key is configured for your chosen provider
+
+### General Issues
+
+1. **Container Not Starting**:
+   ```bash
+   docker-compose down
+   docker-compose up -d
+   docker-compose logs -f
+   ```
+
+2. **Port Already in Use**:
+   - Change `PORT` in `.env` to a different port
+   - Update `docker-compose.yml` if needed
+
+3. **MongoDB Connection Issues**:
+   - Verify MongoDB is running: `docker-compose ps`
+   - Check `MONGO_URI` in `.env`
+
+## Development
+
+### Running Locally (Without Docker)
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   cd client && npm install && cd ..
+   ```
+
+2. **Start MongoDB**:
+   ```bash
+   # Using Docker
+   docker run -d -p 27017:27017 --name mongodb mongo:latest
+   ```
+
+3. **Start Backend**:
+   ```bash
+   npm run dev:api
+   ```
+
+4. **Start Frontend**:
+   ```bash
+   npm run dev:client
+   ```
+
+### Hot Reload
+
+The `docker-compose.override.yml` file includes volume mounts for hot-reload during development:
+
+- `api/server/routes/files/files.js`
+- `api/server/services/Files/process.js`
+- `api/server/services/Files/Audio/extractAudio.js`
+- `api/server/services/Files/Audio/STTService.js`
+
+Changes to these files will be reflected immediately without rebuilding.
+
+### Testing
+
+```bash
+# Run tests (if available)
+npm test
+
+# Check logs
+docker-compose logs -f api
+```
+
+## Security
+
+- **API Keys**: Never commit API keys to version control
+- **Environment Variables**: Use `.env` file (not committed)
+- **File Validation**: All files are validated for type and size
+- **Authentication**: JWT-based authentication required
+- **File Access**: Users can only access their own files
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+[Add your license information here]
+
+## Support
+
+For issues and questions:
+- Check [ARCHITECTURE.md](./ARCHITECTURE.md) for system details
+- Check [LIMITATIONS.md](./LIMITATIONS.md) for format and size limits
+- Review Docker logs: `docker-compose logs -f api`
+
+## Acknowledgments
+
+- Built on [LibreChat](https://librechat.ai)
+- Uses OpenAI Whisper API for transcription
+- ffmpeg for video/audio processing

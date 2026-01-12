@@ -52,10 +52,18 @@ const createFileFilter = (customFileConfig) => {
       return cb(new Error('No file provided'), false);
     }
 
+    // Allow audio files for speech-to-text endpoint
     if (req.originalUrl.endsWith('/speech/stt') && file.mimetype.startsWith('audio/')) {
       return cb(null, true);
     }
 
+    // Allow all file types for direct-transcribe endpoint
+    // This endpoint handles audio/video for transcripts and other files for content extraction
+    if (req.originalUrl.endsWith('/direct-transcribe')) {
+      return cb(null, true);
+    }
+
+    // Existing logic for all other routes
     const endpoint = req.body.endpoint;
     const endpointType = req.body.endpointType;
     const endpointFileConfig = getEndpointFileConfig({

@@ -467,7 +467,7 @@ const processFileUpload = async ({ req, res, metadata }) => {
  * @returns {Promise<void>}
  */
 const processAgentFileUpload = async ({ req, res, metadata }) => {
-  const { file } = req;
+  let { file } = req;
   const appConfig = req.config;
   const { agent_id, tool_resource, file_id, temp_file_id = null } = metadata;
 
@@ -489,6 +489,134 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
   let fileInfoMetadata;
   const entity_id = messageAttachment === true ? undefined : agent_id;
   const basePath = mime.getType(file.originalname)?.startsWith('image') ? 'images' : 'uploads';
+
+  // Handle STT transcription for audio and video message attachments
+  // messageAttachment is true when message_file is set, OR when agent_id exists but no tool_resource (client doesn't set message_file when agent_id exists)
+  // OpenAI Whisper API supports both audio and video files (extracts audio from video automatically)
+  const isAudioOrVideoMessageAttachment = (messageAttachment || (agent_id && !tool_resource)) && 
+    (file.mimetype.startsWith('audio/') || file.mimetype.startsWith('video/'));
+  if (isAudioOrVideoMessageAttachment) {
+    const { file_id, temp_file_id = null } = metadata;
+    const fileConfig = mergeFileConfig(appConfig.fileConfig);
+
+    /**
+     * @param {object} params
+     * @param {string} params.text
+     * @param {number} params.bytes
+     * @param {string} params.filepath
+     * @param {string} params.type
+     * @return {Promise<void>}
+     */
+    const createTextFile = async ({ text, bytes, filepath, type = 'text/plain' }) => {
+      const fileInfo = removeNullishValues({
+        text,
+        bytes,
+        file_id,
+        temp_file_id,
+        user: req.user.id,
+        type,
+        filepath: filepath ?? file.path,
+        source: FileSources.text,
+        filename: file.originalname,
+        context: FileContext.message_attachment,
+      });
+
+      const result = await createFile(fileInfo, true);
+      return res
+        .status(200)
+        .json({ message: 'Agent file uploaded and processed successfully', ...result });
+    };
+
+    const isVideo = file.mimetype.startsWith('video/');
+    const isAudio = file.mimetype.startsWith('audio/');
+    
+    // For audio files, check if STT is configured for this type
+    // For video files, always try STT (OpenAI Whisper API supports video files directly)
+    const shouldUseSTT = isVideo || fileConfig.checkType(
+      file.mimetype,
+      fileConfig.stt?.supportedMimeTypes || [],
+    );
+
+    if (shouldUseSTT) {
+      let extractedAudioPath = null;
+      
+      try {
+        const sttService = await STTService.getInstance();
+        
+        // For video files, extract audio first
+        if (isVideo) {
+          const { extractAudioFromVideo } = require('./Audio/extractAudio');
+          const tempDir = path.dirname(file.path);
+          extractedAudioPath = path.join(tempDir, `${path.basename(file.path, path.extname(file.path))}.audio.wav`);
+          
+          try {
+            await extractAudioFromVideo(file.path, extractedAudioPath);
+            
+            // Update file object for processing
+            const audioFileStats = await fs.promises.stat(extractedAudioPath);
+            // Create a new file object with audio file properties
+            const audioFile = {
+              ...file,
+              path: extractedAudioPath,
+              size: audioFileStats.size,
+              mimetype: 'audio/wav',
+            };
+            // Use the audio file for STT processing
+            file = audioFile;
+          } catch (extractError) {
+            logger.error(`[processAgentFileUpload] Failed to extract audio from video file "${file.originalname}":`, extractError);
+            throw new Error(`Failed to extract audio from video file: ${extractError.message}`);
+          }
+        }
+        
+        const { text, bytes } = await processAudioFile({ req, file, sttService });
+        
+        // Cleanup extracted audio file
+        if (extractedAudioPath) {
+          try {
+            await fs.promises.unlink(extractedAudioPath);
+          } catch (cleanupError) {
+            logger.warn(`[processAgentFileUpload] Failed to cleanup extracted audio file "${extractedAudioPath}":`, cleanupError);
+            // Don't fail the request if cleanup fails
+          }
+        }
+        
+        return await createTextFile({ text, bytes });
+      } catch (sttError) {
+        // Cleanup extracted audio file on error
+        if (extractedAudioPath) {
+          try {
+            await fs.promises.unlink(extractedAudioPath);
+          } catch (cleanupError) {
+            // Ignore cleanup errors
+          }
+        }
+        
+        logger.error(
+          `[processAgentFileUpload] STT processing failed for ${isVideo ? 'video' : 'audio'} file "${file.originalname}", falling back to standard storage:`,
+          sttError,
+        );
+        
+        // For video files, if STT fails, create a text file with an error message
+        if (isVideo) {
+          const errorMessage = `[Video file "${file.originalname}" was uploaded but transcription failed: ${sttError.message}]`;
+          return await createTextFile({ 
+            text: errorMessage, 
+            bytes: Buffer.byteLength(errorMessage, 'utf8') 
+          });
+        }
+        
+        // For audio files, fall through to standard storage
+        // Fall through to standard storage flow below
+      }
+    } else {
+      // Audio file but STT not configured for this type, fall through to standard storage
+      logger.debug(
+        `[processAgentFileUpload] Audio file "${file.originalname}" does not match STT supported types, using standard storage`,
+      );
+    }
+  }
+
   if (tool_resource === EToolResources.execute_code) {
     const isCodeEnabled = await checkCapability(req, AgentCapabilities.execute_code);
     if (!isCodeEnabled) {

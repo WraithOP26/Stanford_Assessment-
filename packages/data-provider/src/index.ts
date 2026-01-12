@@ -37,6 +37,7 @@ export * from './headers-helpers';
 export { loginPage, registerPage, apiBaseUrl } from './api-endpoints';
 export { default as request } from './request';
 export { dataService };
+export type { DirectTranscribeResponse } from './data-service';
 import * as dataService from './data-service';
 /* general helpers */
 export * from './utils';

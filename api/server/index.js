@@ -148,7 +148,25 @@ const startServer = async () => {
   app.use('/api/models', routes.models);
   app.use('/api/config', routes.config);
   app.use('/api/assistants', routes.assistants);
-  app.use('/api/files', await routes.files.initialize());
+  const filesRouter = await routes.files.initialize();
+  // Add middleware to log all requests to /api/files
+  app.use('/api/files', (req, res, next) => {
+    if (req.path.includes('direct-transcribe')) {
+      console.log('[MAIN APP] Request to /api/files/direct-transcribe:', {
+        method: req.method,
+        path: req.path,
+        originalUrl: req.originalUrl,
+        url: req.url,
+      });
+      logger.info('[main] Request to /api/files/direct-transcribe', {
+        method: req.method,
+        path: req.path,
+        originalUrl: req.originalUrl,
+      });
+    }
+    next();
+  });
+  app.use('/api/files', filesRouter);
   app.use('/images/', createValidateImageRequest(appConfig.secureImageLinks), routes.staticRoute);
   app.use('/api/share', routes.share);
   app.use('/api/roles', routes.roles);

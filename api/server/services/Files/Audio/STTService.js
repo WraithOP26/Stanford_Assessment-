@@ -9,17 +9,21 @@ const { extractEnvVariable, STTProviders } = require('librechat-data-provider');
 const { getAppConfig } = require('~/server/services/Config');
 
 /**
- * Maps MIME types to their corresponding file extensions for audio files.
+ * Maps MIME types to their corresponding file extensions for audio and video files.
  * @type {Object}
  */
 const MIME_TO_EXTENSION_MAP = {
-  // MP4 container formats
+  // MP4 container formats (audio)
   'audio/mp4': 'm4a',
   'audio/x-m4a': 'm4a',
+  // MP4 container formats (video)
+  'video/mp4': 'mp4',
+  'video/x-m4v': 'm4v',
   // Ogg formats
   'audio/ogg': 'ogg',
   'audio/vorbis': 'ogg',
   'application/ogg': 'ogg',
+  'video/ogg': 'ogv',
   // Wave formats
   'audio/wav': 'wav',
   'audio/x-wav': 'wav',
@@ -28,8 +32,12 @@ const MIME_TO_EXTENSION_MAP = {
   'audio/mp3': 'mp3',
   'audio/mpeg': 'mp3',
   'audio/mpeg3': 'mp3',
+  // MPEG video formats
+  'video/mpeg': 'mpeg',
+  'video/mpg': 'mpg',
   // WebM formats
   'audio/webm': 'webm',
+  'video/webm': 'webm',
   // Additional formats
   'audio/flac': 'flac',
   'audio/x-flac': 'flac',
@@ -82,15 +90,25 @@ function getFileExtensionFromMime(mimeType) {
 
   // Try to extract subtype as fallback
   const subtype = mimeType.split('/')[1]?.toLowerCase();
+  const mainType = mimeType.split('/')[0]?.toLowerCase();
 
-  // If subtype matches a known extension
+  // For video files, use the video extension directly
+  if (mainType === 'video') {
+    if (['mp4', 'webm', 'mpeg', 'mpg', 'ogg', 'ogv'].includes(subtype)) {
+      return subtype === 'mpeg' || subtype === 'mpg' ? 'mpeg' : subtype;
+    }
+  }
+
+  // If subtype matches a known audio extension
   if (['mp3', 'mp4', 'ogg', 'wav', 'webm', 'm4a', 'flac'].includes(subtype)) {
     return subtype === 'mp4' ? 'm4a' : subtype;
   }
 
-  // Generic checks for partial matches
-  if (subtype?.includes('mp4') || subtype?.includes('m4a')) {
-    return 'm4a';
+  // Generic checks for partial matches (audio files only)
+  if (mainType === 'audio') {
+    if (subtype?.includes('mp4') || subtype?.includes('m4a')) {
+      return 'm4a';
+    }
   }
   if (subtype?.includes('ogg')) {
     return 'ogg';
@@ -196,23 +214,27 @@ class STTService {
     const url = sttSchema?.url || 'https://api.openai.com/v1/audio/transcriptions';
     const apiKey = extractEnvVariable(sttSchema.apiKey) || '';
 
-    const data = {
-      file: audioReadStream,
-      model: sttSchema.model,
-    };
+    // Use explicit FormData to ensure filename and contentType are set correctly
+    // This is especially important for video files
+    const formData = new FormData();
+    formData.append('file', audioReadStream, {
+      filename: audioFile.originalname || `file.${getFileExtensionFromMime(audioFile.mimetype)}`,
+      contentType: audioFile.mimetype,
+    });
+    formData.append('model', sttSchema.model);
 
     const validLanguage = getValidatedLanguageCode(language);
     if (validLanguage) {
-      data.language = validLanguage;
+      formData.append('language', validLanguage);
     }
 
     const headers = {
-      'Content-Type': 'multipart/form-data',
       ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+      ...formData.getHeaders(),
     };
     [headers].forEach(this.removeUndefined);
 
-    return [url, data, headers];
+    return [url, formData, headers];
   }
 
   /**
@@ -283,7 +305,11 @@ class STTService {
     const fileExtension = getFileExtensionFromMime(audioFile.mimetype);
 
     const audioReadStream = Readable.from(audioBuffer);
-    audioReadStream.path = `audio.${fileExtension}`;
+    // Use original filename if it exists, otherwise generate one with correct extension
+    // This ensures video files keep their .mp4/.webm extension instead of being renamed to audio.*
+    audioReadStream.path = audioFile.originalname && audioFile.originalname.endsWith(`.${fileExtension}`)
+      ? audioFile.originalname
+      : `file.${fileExtension}`;
 
     const [url, data, headers] = strategy.call(
       this,
@@ -312,6 +338,26 @@ class STTService {
 
       return response.data.text.trim();
     } catch (error) {
+      // Log detailed error information for debugging
+      if (axios.isAxiosError(error) && error.response) {
+        console.error(`[STT] Detailed error for ${audioFile.originalname}:`, {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          filename: audioFile.originalname,
+          mimetype: audioFile.mimetype,
+          size: audioFile.size,
+        });
+        logger.error(`STT request failed for provider ${provider}:`, {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers,
+          filename: audioFile.originalname,
+          mimetype: audioFile.mimetype,
+          size: audioFile.size,
+        });
+      }
       logAxiosError({ message: `STT request failed for provider ${provider}:`, error });
       throw error;
     }

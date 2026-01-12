@@ -8,6 +8,7 @@ import { cn } from '~/utils';
 type SendButtonProps = {
   disabled: boolean;
   control: Control<{ text: string }>;
+  hasFiles?: boolean;
 };
 
 const SubmitButton = React.memo(
@@ -41,7 +42,9 @@ const SubmitButton = React.memo(
 const SendButton = React.memo(
   forwardRef((props: SendButtonProps, ref: React.ForwardedRef<HTMLButtonElement>) => {
     const data = useWatch({ control: props.control });
-    return <SubmitButton ref={ref} disabled={props.disabled || !data.text} />;
+    // Allow sending if there's text OR if there are files attached
+    const hasContent = !!data.text || props.hasFiles;
+    return <SubmitButton ref={ref} disabled={props.disabled || !hasContent} />;
   }),
 );
 
