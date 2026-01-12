@@ -36,6 +36,30 @@ const { LB_QueueAsyncCall } = require('~/server/utils/queue');
 const { getStrategyFunctions } = require('./strategies');
 const { determineFileType } = require('~/server/utils');
 const { STTService } = require('./Audio/STTService');
+const { getAgent } = require('~/models/Agent');
+const { Providers } = require('@librechat/agents');
+
+/**
+ * Check if a provider supports multimodal audio/video input
+ * (can process audio/video directly without transcription)
+ * @param {string|null|undefined} provider - The provider name
+ * @returns {boolean} - True if provider supports multimodal audio/video
+ */
+const supportsMultimodalAudioVideo = (provider) => {
+  if (!provider) {
+    return false;
+  }
+  // Providers that support direct audio/video input:
+  // - Google/Gemini (supports audio and video via encodeAndFormatAudios/encodeAndFormatVideos)
+  // - OpenRouter (supports audio and video via encodeAndFormatAudios/encodeAndFormatVideos)
+  // - Vertex AI (same as Google)
+  return (
+    provider === EModelEndpoint.google ||
+    provider === Providers.VERTEXAI ||
+    provider === Providers.OPENROUTER ||
+    provider.toLowerCase() === Providers.OPENROUTER.toLowerCase()
+  );
+};
 
 /**
  * Creates a modular file upload wrapper that ensures filename sanitization
@@ -490,54 +514,89 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
   const entity_id = messageAttachment === true ? undefined : agent_id;
   const basePath = mime.getType(file.originalname)?.startsWith('image') ? 'images' : 'uploads';
 
-  // Handle STT transcription for audio and video message attachments
+  // Handle audio and video message attachments
   // messageAttachment is true when message_file is set, OR when agent_id exists but no tool_resource (client doesn't set message_file when agent_id exists)
-  // OpenAI Whisper API supports both audio and video files (extracts audio from video automatically)
   const isAudioOrVideoMessageAttachment = (messageAttachment || (agent_id && !tool_resource)) && 
     (file.mimetype.startsWith('audio/') || file.mimetype.startsWith('video/'));
   if (isAudioOrVideoMessageAttachment) {
     const { file_id, temp_file_id = null } = metadata;
     const fileConfig = mergeFileConfig(appConfig.fileConfig);
-
-    /**
-     * @param {object} params
-     * @param {string} params.text
-     * @param {number} params.bytes
-     * @param {string} params.filepath
-     * @param {string} params.type
-     * @return {Promise<void>}
-     */
-    const createTextFile = async ({ text, bytes, filepath, type = 'text/plain' }) => {
-      const fileInfo = removeNullishValues({
-        text,
-        bytes,
-        file_id,
-        temp_file_id,
-        user: req.user.id,
-        type,
-        filepath: filepath ?? file.path,
-        source: FileSources.text,
-        filename: file.originalname,
-        context: FileContext.message_attachment,
-      });
-
-      const result = await createFile(fileInfo, true);
-      return res
-        .status(200)
-        .json({ message: 'Agent file uploaded and processed successfully', ...result });
-    };
-
-    const isVideo = file.mimetype.startsWith('video/');
-    const isAudio = file.mimetype.startsWith('audio/');
     
-    // For audio files, check if STT is configured for this type
-    // For video files, always try STT (OpenAI Whisper API supports video files directly)
-    const shouldUseSTT = isVideo || fileConfig.checkType(
-      file.mimetype,
-      fileConfig.stt?.supportedMimeTypes || [],
-    );
+    // Check if the provider supports multimodal audio/video input
+    // If yes, skip transcription and let the LLM process the file directly
+    let agentProvider = null;
+    if (agent_id) {
+      try {
+        const agent = await getAgent({ id: agent_id });
+        if (agent && agent.provider) {
+          agentProvider = agent.provider;
+        }
+      } catch (agentError) {
+        logger.warn(
+          `[processAgentFileUpload] Could not load agent ${agent_id} to check provider:`,
+          agentError.message,
+        );
+        // Continue with transcription fallback
+      }
+    }
+    
+    const supportsMultimodal = supportsMultimodalAudioVideo(agentProvider);
+    
+    if (supportsMultimodal) {
+      // Provider supports multimodal - skip transcription and store file normally
+      // The file will be passed to the LLM via encodeAndFormatAudios/encodeAndFormatVideos
+      // in BaseClient.addAudios()/addVideos()
+      logger.info(
+        `[processAgentFileUpload] Provider ${agentProvider} supports multimodal audio/video for "${file.originalname}", skipping transcription`,
+      );
+      // Fall through to standard storage flow below (skip transcription block)
+      // Note: We intentionally skip the transcription block and continue to the standard storage logic
+      // No closing brace here - we want to continue to the code below
+    } else {
+      // Provider doesn't support multimodal - use transcription approach
+      logger.info(
+        `[processAgentFileUpload] Provider ${agentProvider || 'unknown'} does not support multimodal audio/video for "${file.originalname}", using transcription`,
+      );
 
-    if (shouldUseSTT) {
+      /**
+       * @param {object} params
+       * @param {string} params.text
+       * @param {number} params.bytes
+       * @param {string} params.filepath
+       * @param {string} params.type
+       * @return {Promise<void>}
+       */
+      const createTextFile = async ({ text, bytes, filepath, type = 'text/plain' }) => {
+        const fileInfo = removeNullishValues({
+          text,
+          bytes,
+          file_id,
+          temp_file_id,
+          user: req.user.id,
+          type,
+          filepath: filepath ?? file.path,
+          source: FileSources.text,
+          filename: file.originalname,
+          context: FileContext.message_attachment,
+        });
+
+        const result = await createFile(fileInfo, true);
+        return res
+          .status(200)
+          .json({ message: 'Agent file uploaded and processed successfully', ...result });
+      };
+
+      const isVideo = file.mimetype.startsWith('video/');
+      const isAudio = file.mimetype.startsWith('audio/');
+      
+      // For audio files, check if STT is configured for this type
+      // For video files, always try STT (OpenAI Whisper API supports video files directly)
+      const shouldUseSTT = isVideo || fileConfig.checkType(
+        file.mimetype,
+        fileConfig.stt?.supportedMimeTypes || [],
+      );
+
+      if (shouldUseSTT) {
       let extractedAudioPath = null;
       
       try {
@@ -609,12 +668,14 @@ const processAgentFileUpload = async ({ req, res, metadata }) => {
         // For audio files, fall through to standard storage
         // Fall through to standard storage flow below
       }
-    } else {
-      // Audio file but STT not configured for this type, fall through to standard storage
-      logger.debug(
-        `[processAgentFileUpload] Audio file "${file.originalname}" does not match STT supported types, using standard storage`,
-      );
+      } else {
+        // Audio file but STT not configured for this type, fall through to standard storage
+        logger.debug(
+          `[processAgentFileUpload] Audio file "${file.originalname}" does not match STT supported types, using standard storage`,
+        );
+      }
     }
+    // If multimodal is supported, we skip the transcription block entirely and continue to standard storage
   }
 
   if (tool_resource === EToolResources.execute_code) {

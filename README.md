@@ -4,15 +4,16 @@ A comprehensive AI chat platform with advanced file processing capabilities incl
 
 ## Features
 
-### 🎥 Video Transcription
+### 🎥 Video Processing
 - Upload video files (MP4, MOV, WebM, etc.)
-- Automatic audio extraction using ffmpeg
-- Speech-to-text transcription using OpenAI Whisper API
-- Support for videos with audio tracks
+- **Multimodal Providers** (Google/Gemini, OpenRouter): Direct video processing - no transcription needed
+- LLM processes video directly, preserving visual and audio context
+- Supports videos with audio tracks
 
-### 🎵 Audio Transcription
+### 🎵 Audio Processing
 - Direct audio file upload (WAV, MP3, M4A, etc.)
-- Real-time transcription using OpenAI Whisper API
+- **Multimodal Providers** (Google/Gemini, OpenRouter): Direct audio processing - no transcription needed
+- **Other Providers** (GPT-4, Claude): Real-time transcription using OpenAI Whisper API
 - Multiple audio format support
 
 ### 📄 Document Chat (Without RAG)
@@ -26,8 +27,9 @@ A comprehensive AI chat platform with advanced file processing capabilities incl
 - **Docker** and **Docker Compose** installed
 - **Node.js** 18+ (for local development)
 - **MongoDB** (included in Docker setup)
-- **OpenAI API Key** (for Whisper transcription)
+- **OpenAI API Key** (for Whisper transcription with non-multimodal providers)
 - **AI Provider API Key** (OpenAI, Anthropic, Google, etc.)
+  - **Google/Gemini API Key** (recommended for video/audio - supports direct multimodal processing)
 
 ## Quick Start
 
@@ -146,53 +148,57 @@ The application consists of the following Docker services:
 
 ## Demo Instructions
 
-### Demo 1: Video File Transcription
+### Demo 1: Video File Processing
 
-1. **Upload a Video File**:
+**Using Multimodal Provider (Google/Gemini) - Recommended:**
+
+1. **Configure Agent**:
+   - Create/select an agent with provider set to `google` (Gemini)
+   - Select a model like `gemini-2.5-pro` or `gemini-2.5-flash`
+
+2. **Upload a Video File**:
    - Click the attachment button in the chat input
-   - Select a video file (MP4, MOV, etc.) with audio
+   - Select a video file (MP4, MOV, WebM, etc.)
    - Wait for upload to complete
 
-2. **Verify Transcription**:
-   - The system will automatically:
-     - Detect the video file
-     - Extract audio using ffmpeg
-     - Transcribe using Whisper API
-     - Store the transcript
-   - You should see a message indicating the transcript is ready
+3. **Process Video**:
+   - The system automatically detects multimodal provider
+   - Video is processed directly by the LLM (no transcription needed)
+   - Full visual and audio context is preserved
 
-3. **Ask Questions**:
+4. **Ask Questions**:
    - Ask questions about the video content
-   - The AI will use the transcript to answer
+   - The AI has access to both visual and audio information
 
 **Example**:
 ```
 User: [Uploads video.mp4]
 System: File uploaded and processed successfully
-User: What is the main topic discussed in this video?
-AI: [Answers based on transcript]
+User: What is happening in this video?
+AI: [Answers based on full video context - visual + audio]
 ```
 
-### Demo 2: Audio File Transcription
+### Demo 2: Audio File Processing
 
-1. **Upload an Audio File**:
-   - Click the attachment button
-   - Select an audio file (WAV, MP3, M4A, etc.)
-   - Wait for upload to complete
+**Option A: Using Multimodal Provider (Google/Gemini, OpenRouter)**
 
-2. **Verify Transcription**:
-   - The system will automatically transcribe the audio
-   - Transcript is stored and available for chat
+1. **Configure Agent** with multimodal provider (Google/Gemini)
+2. **Upload Audio File** (WAV, MP3, M4A, etc.)
+3. Audio is processed directly by the LLM
 
-3. **Ask Questions**:
-   - Ask questions about the audio content
+**Option B: Using Transcription (GPT-4, Claude, etc.)**
+
+1. **Configure Agent** with non-multimodal provider (GPT-4)
+2. **Upload Audio File** (WAV, MP3, M4A, etc.)
+3. System automatically transcribes using Whisper API
+4. Transcript is stored and available for chat
 
 **Example**:
 ```
 User: [Uploads audio.wav]
 System: File uploaded and processed successfully
 User: Summarize the key points from this audio
-AI: [Summarizes based on transcript]
+AI: [Summarizes based on audio/transcript]
 ```
 
 ### Demo 3: Document Chat (Without RAG)

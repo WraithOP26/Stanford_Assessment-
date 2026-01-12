@@ -51,22 +51,36 @@ The Stanford AI Playground is built on LibreChat and consists of:
 
 ## Data Flow
 
-### Video/Audio Transcription Flow
+### Video/Audio Processing Flow
 
+**Option 1: Multimodal Providers (Google/Gemini, OpenRouter)**
 ```
 1. User uploads video/audio file
    ↓
 2. Backend receives file via /api/files
    ↓
-3. For video: Extract audio using ffmpeg
+3. System detects provider supports multimodal
    ↓
-4. Send audio to OpenAI Whisper API
+4. File stored and passed directly to LLM
    ↓
-5. Receive transcript text
+5. LLM processes video/audio directly
    ↓
-6. Store transcript as text file
+6. Response includes full context (visual + audio)
+```
+
+**Option 2: Transcription (Non-Multimodal Providers)**
+```
+1. User uploads audio file (video not supported)
    ↓
-7. User can chat with transcript
+2. Backend receives file via /api/files
+   ↓
+3. Send audio to OpenAI Whisper API
+   ↓
+4. Receive transcript text
+   ↓
+5. Store transcript as text file
+   ↓
+6. User can chat with transcript
 ```
 
 ### Document Chat Flow (Without RAG)
@@ -95,9 +109,10 @@ The Stanford AI Playground is built on LibreChat and consists of:
 
 ### Backend
 - **`files.js`**: File upload endpoint (`POST /api/files`)
-- **`process.js`**: Main file processing logic
-- **`extractAudio.js`**: Extracts audio from video files (uses ffmpeg)
-- **`STTService.js`**: Interfaces with OpenAI Whisper API
+- **`process.js`**: Main file processing logic (includes multimodal detection)
+- **`extractAudio.js`**: Extracts audio from video files (uses ffmpeg, for STT fallback)
+- **`STTService.js`**: Interfaces with OpenAI Whisper API (for non-multimodal providers)
+- **`encode/audio.ts`** and **`encode/video.ts`**: Encode audio/video for multimodal providers
 - **`request.js`**: Handles chat requests and streaming
 
 ## Data Storage
@@ -109,7 +124,8 @@ The Stanford AI Playground is built on LibreChat and consists of:
 ## Configuration
 
 ### Environment Variables (`.env`)
-- `OPENAI_API_KEY`: Required for Whisper transcription
+- `OPENAI_API_KEY`: Required for Whisper transcription (with non-multimodal providers)
+- `GOOGLE_KEY`: Required for Google/Gemini multimodal support (recommended for video/audio)
 - `MONGO_URI`: MongoDB connection
 - `JWT_SECRET`: Authentication secret
 

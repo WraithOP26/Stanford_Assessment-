@@ -5,19 +5,31 @@ This document outlines the limitations, supported file formats, and model requir
 ## File Size Limitations
 
 ### Audio Files
-- **Maximum file size**: 25 MB (OpenAI Whisper API limit)
-- **Recommended size**: < 10 MB for optimal performance
-- **Processing time**: Approximately 1-2 seconds per minute of audio
+- **Status**: ✅ **Working with Multimodal Providers** (Google/Gemini, OpenRouter) and ✅ **Working with STT Transcription** (for non-multimodal providers)
+- **Multimodal Providers**:
+  - Google/Gemini: Supports audio files directly, no transcription needed
+  - OpenRouter: Supports audio files directly, no transcription needed
+  - **Maximum file size**: Varies by provider (typically 20-100 MB)
+- **STT Transcription Approach** (for non-multimodal providers like GPT-4):
+  - **Maximum file size**: 25 MB (OpenAI Whisper API limit)
+  - **Recommended size**: < 10 MB for optimal performance
+  - **Processing time**: Approximately 1-2 seconds per minute of audio
 
 ### Video Files
-- **Status**: ⚠️ **Currently Not Working** - Video transcription is experiencing issues
-- **Maximum file size**: 25 MB (after audio extraction, for transcription) - *when working*
-- **Original video size**: No hard limit, but larger files take longer to process - *when working*
-- **Audio extraction**: Video files are processed to extract audio first, which must be ≤ 25 MB - *when working*
-- **Processing time**: 
-  - Audio extraction: 5-30 seconds depending on video length and complexity - *when working*
-  - Transcription: 1-2 seconds per minute of audio - *when working*
-- **Workaround**: Extract audio manually and upload as audio file (see Known Issues section)
+-   **Status**: ✅ **Working with Multimodal Providers** (Google/Gemini, OpenRouter), ⚠️ **Not Working with STT Transcription**
+-   **Multimodal Providers (Recommended)**:
+    -   Google/Gemini: Supports video files directly, no transcription needed
+    -   OpenRouter: Supports video files directly, no transcription needed
+    -   **Maximum file size**: Varies by provider (typically 20-100 MB)
+    -   **Processing**: Direct video processing by the LLM, preserves visual and audio information
+-   **STT Transcription Approach** (for non-multimodal providers):
+    -   **Status**: ⚠️ Currently not functional
+    -   **Maximum file size**: 25 MB (after audio extraction)
+    -   **Audio extraction**: Video files are processed to extract audio first, which must be ≤ 25 MB
+    -   **Processing time**:
+        -   Audio extraction: 5-30 seconds depending on video length and complexity
+        -   Transcription: 1-2 seconds per minute of audio
+    -   **Workaround**: Extract audio manually and upload as audio file (see Known Issues section)
 
 ### Document Files (PDF, DOCX, etc.)
 - **Maximum file size**: 
@@ -106,38 +118,22 @@ The system supports the following document formats for direct file attachment an
 
 ## Model Requirements
 
-### For Audio/Video Transcription
-- **Required**: OpenAI API key with access to Whisper API
-- **Model**: `whisper-1` (default)
-- **API Endpoint**: `https://api.openai.com/v1/audio/transcriptions`
-- **Alternative**: Can be configured to use Azure OpenAI or other Whisper-compatible services
+### For Audio/Video Processing
 
-### For Document Processing
-The system supports multiple AI providers for document chat:
+**Option 1: Multimodal Providers (Recommended)**
+-   **Google/Gemini**: Supports audio and video files directly
+    -   **Required**: Google API key (`GOOGLE_API_KEY`)
+    -   **Models**: Gemini models (e.g., `gemini-pro`, `gemini-pro-vision`)
+-   **OpenRouter**: Supports audio and video files directly
+    -   **Required**: OpenRouter API key
+    -   **Models**: Various models that support multimodal input
 
-1. **OpenAI** (GPT-4, GPT-4 Turbo, GPT-3.5)
-   - Requires: `OPENAI_API_KEY`
-   - Supports: All document formats listed above
-   - Max file size: 512 MB
-
-2. **Anthropic** (Claude 3, Claude 3.5)
-   - Requires: `ANTHROPIC_API_KEY`
-   - Supports: PDF, TXT, and other text formats
-   - Max file size: 100 MB
-
-3. **Google** (Gemini Pro, Gemini Ultra)
-   - Requires: `GOOGLE_API_KEY` or `GOOGLE_APPLICATION_CREDENTIALS`
-   - Supports: PDF, images, and text formats
-   - Max file size: 20 MB
-
-4. **Azure OpenAI**
-   - Requires: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_API_INSTANCE_NAME`, `AZURE_OPENAI_API_DEPLOYMENT_NAME`
-   - Supports: Same as OpenAI
-   - Max file size: 512 MB
-
-5. **Custom Endpoints**
-   - Supports any OpenAI-compatible API
-   - Limitations depend on the specific endpoint configuration
+**Option 2: STT Transcription (for non-multimodal providers)**
+-   **Required**: OpenAI API key with access to Whisper API
+-   **Model**: `whisper-1` (default)
+-   **API Endpoint**: `https://api.openai.com/v1/audio/transcriptions`
+-   **Alternative**: Can be configured to use Azure OpenAI or other Whisper-compatible services
+-   **Note**: Video transcription via STT is currently not working
 
 ### For Video Audio Extraction
 - **Required**: `ffmpeg` installed in the Docker container
@@ -150,26 +146,33 @@ The system supports multiple AI providers for document chat:
 
 ## Known Issues
 
-### Video Transcription
-- **Status**: ⚠️ **Currently Not Working**
-- **Issue**: Video file transcription is experiencing issues with audio extraction
-- **Workaround**: 
-  - Extract audio manually from video files using ffmpeg:
+### Video Transcription: ⚠️ Limited Support
+
+-   **Status**: ✅ **Working with Multimodal Providers** (Google/Gemini, OpenRouter), ⚠️ **Not Working with STT Transcription**
+-   **Recommended Solution**: Use a multimodal-capable provider (Google/Gemini, OpenRouter) which can process video files directly without transcription.
+-   **For Non-Multimodal Providers**: Video transcription via STT is currently not functional. As a workaround, manually extract audio from video files using `ffmpeg` and upload the resulting audio file for transcription:
     ```bash
     ffmpeg -i video.mp4 -vn -acodec pcm_s16le -ar 44100 -ac 2 audio.wav
     ```
-  - Upload the extracted audio file (WAV, MP3, etc.) for transcription
-- **Root Cause**: Audio stream detection and extraction from video files is not functioning correctly
-- **Expected Fix**: Future update will resolve video transcription functionality
+    Then upload `audio.wav` for transcription.
+
 
 ## Processing Limitations
 
-### Audio/Video Transcription
+### Audio/Video Processing
+
+**Multimodal Providers (Google/Gemini, OpenRouter)**
+- **Language Support**: All languages supported by the provider
+- **Accuracy**: Depends on model capabilities and input quality
+- **Processing**: Direct processing, no transcription step needed
+- **Concurrent requests**: Limited by provider rate limits
+
+**STT Transcription (Non-Multimodal Providers)**
 - **Language Support**: All languages supported by OpenAI Whisper API
 - **Accuracy**: Depends on audio quality, background noise, and language
 - **Real-time factor**: ~0.1x (10 minutes of audio takes ~1 minute to process)
 - **Concurrent requests**: Limited by API rate limits and server resources
-- **Video Files**: ⚠️ Currently not supported - use audio extraction workaround above
+- **Video Files**: ⚠️ Not supported - use multimodal providers for video
 
 ### Document Processing
 - **Text extraction**: Automatic for PDF, DOCX, and other formats
@@ -186,12 +189,13 @@ The system supports multiple AI providers for document chat:
 ### Common Errors and Solutions
 
 1. **"Video file transcription not working"** ⚠️
-   - **Cause**: Known issue with video transcription functionality
-   - **Solution**: Extract audio manually from video and upload as audio file:
+   - **Cause**: Video transcription via STT (Speech-to-Text) is not functional for non-multimodal providers.
+   - **Solution 1 (Recommended)**: Use a multimodal-capable provider (Google/Gemini or OpenRouter) which can process video files directly.
+   - **Solution 2**: Extract audio manually from video and upload as audio file:
      ```bash
      ffmpeg -i video.mp4 -vn -acodec pcm_s16le -ar 44100 -ac 2 audio.wav
      ```
-     Then upload `audio.wav` for transcription
+     Then upload `audio.wav` for transcription.
 
 2. **"Video file does not contain an audio stream"**
    - **Cause**: Video file has no audio track, or audio stream detection is failing
@@ -231,22 +235,4 @@ The system supports multiple AI providers for document chat:
 - **Temporary storage**: Extracted audio files are automatically cleaned up
 - **API keys**: Stored securely in environment variables
 - **File access**: Files are only accessible to the uploading user
-
-## Current Status Summary
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Audio Transcription | ✅ Working | Supports WAV, MP3, M4A, OGG, FLAC, etc. |
-| Video Transcription | ⚠️ Not Working | Use manual audio extraction workaround |
-| Document Chat | ✅ Working | PDF, DOCX, TXT, etc. (without RAG) |
-
-## Future Enhancements
-
-Potential improvements not yet implemented:
-- **Fix video transcription**: Resolve audio extraction issues for video files
-- Support for larger video files (> 25 MB) with chunking
-- OCR for scanned documents
-- Batch processing for multiple files
-- Custom language models for domain-specific transcription
-- Real-time audio transcription streaming
 
